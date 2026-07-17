@@ -15,15 +15,15 @@ import javax.crypto.spec.SecretKeySpec;
 /** Untimed fail-closed oracle and complete-result verifier for seeded fixtures. */
 public final class BenchmarkVerifier {
     static final String AUTH_KEY_ENVIRONMENT = "STREAMLENS_JAVA_FIXTURE_AUTH_KEY";
-    private static final String RECORD_VERSION = "streamlens-java-oracle-v3";
+    private static final String RECORD_VERSION = "streamlens-java-oracle-v4";
     private static final String LOCAL_SEED =
             "4bd31f5c4ecdb1633d14d50f72132011cbd2f8d5b76f36668b45e20f86f2c872";
     // These constants are produced once by the trusted baseline over LOCAL_SEED.
     private static final AnalyzerBenchmark.ExpectedDigests LOCAL_EXPECTED =
             new AnalyzerBenchmark.ExpectedDigests(
-                    "8a2a448bf367344654bf56301d9d1168240c5538638629ba9ba9d68b8309f319",
-                    "217bf591d43130e74a560bc55c1325182ac99b2364b15bc4a68a268c7e025fbc",
-                    "5ff385d0a73ac66630cd30a354c920482cc2c96404042e6e822f73e93d1c729e");
+                    "1396a8a035362e68eb8e5b32c1b47960491c68249e8a237d1d14bc11b7ee039b",
+                    "7748caf9d06a8dda9575f0c16fa1b48b09a76f1387dd84ca83040549b23531bf",
+                    "f3418284c8414949f9c35aad8d82a7304cdd5047626b5b3a6b41f4620f3610e2");
 
     private BenchmarkVerifier() {}
 

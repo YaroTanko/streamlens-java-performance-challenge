@@ -3,6 +3,10 @@ set -euo pipefail
 
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 cd -- "$root"
+# Keep these separate: task-graph configuration for one `clean jmhJar` command
+# can observe stale output before `clean` executes and mask a missing main-output
+# dependency in the assembled JMH jar.
+./gradlew --no-daemon --console=plain clean
 ./gradlew --no-daemon --console=plain jmhJar
 version=$(sed -nE 's/^version = "([^"]+)"$/\1/p' build.gradle.kts)
 [[ $(wc -l <<<"$version" | tr -d '[:space:]') == 1 ]] || {
@@ -14,6 +18,15 @@ jar="build/libs/streamlens-java-performance-challenge-${version}-jmh.jar"
   echo "jmh-contract-test: missing runnable JMH jar for version $version" >&2
   exit 1
 }
+for required_class in \
+  com/streamlens/analyzer/Analyzer.class \
+  com/streamlens/analyzer/AnalyzerConfig.class \
+  com/streamlens/assessment/BenchmarkVerifier.class; do
+  jar tf "$jar" | grep -Fqx "$required_class" || {
+    echo "jmh-contract-test: JMH jar is missing $required_class" >&2
+    exit 1
+  }
+done
 java -Xms1g -Xmx1g -XX:+UseG1GC -XX:ActiveProcessorCount=1 \
   -cp "$jar" com.streamlens.assessment.BenchmarkVerifier
 seed=1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
@@ -21,7 +34,7 @@ key=abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
 record=$(java -Xms1g -Xmx1g -XX:+UseG1GC -XX:ActiveProcessorCount=1 \
   -cp "$jar" com.streamlens.assessment.BenchmarkVerifier \
   oracle --seed "$seed" --auth-key "$key")
-[[ $record =~ ^streamlens-java-oracle-v3:${seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] || {
+[[ $record =~ ^streamlens-java-oracle-v4:${seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] || {
   echo 'jmh-contract-test: oracle record is malformed' >&2
   exit 1
 }

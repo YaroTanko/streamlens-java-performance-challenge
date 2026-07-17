@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.streamlens"
-version = "3.0.0"
+version = "4.0.0"
 
 repositories {
     mavenCentral()
@@ -25,9 +25,10 @@ application {
     mainClass = "com.streamlens.StreamLens"
 }
 
+val mainSourceSet = sourceSets.main.get()
 val jmh = sourceSets.create("jmh")
-jmh.compileClasspath += sourceSets.main.get().output
-jmh.runtimeClasspath += sourceSets.main.get().output
+jmh.compileClasspath += mainSourceSet.output
+jmh.runtimeClasspath += mainSourceSet.output
 
 configurations[jmh.implementationConfigurationName].extendsFrom(configurations.implementation.get())
 configurations[jmh.runtimeOnlyConfigurationName].extendsFrom(configurations.runtimeOnly.get())
@@ -72,7 +73,7 @@ val benchmarkJvmArgs = listOf(
 tasks.register<JavaExec>("jmh") {
     group = "benchmark"
     description = "Runs the JMH assessment benchmarks in a fixed single-CPU fork."
-    dependsOn(jmh.classesTaskName)
+    dependsOn(mainSourceSet.classesTaskName, jmh.classesTaskName)
     classpath = jmh.runtimeClasspath
     mainClass = "org.openjdk.jmh.Main"
 
@@ -95,7 +96,7 @@ tasks.register<JavaExec>("jmh") {
 tasks.register<Jar>("jmhJar") {
     group = "build"
     description = "Builds a runnable, self-contained JMH benchmark jar."
-    dependsOn(jmh.classesTaskName)
+    dependsOn(mainSourceSet.classesTaskName, jmh.classesTaskName)
     archiveClassifier = "jmh"
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     isPreserveFileTimestamps = false
@@ -104,6 +105,9 @@ tasks.register<Jar>("jmhJar") {
     manifest {
         attributes["Main-Class"] = "org.openjdk.jmh.Main"
     }
+    // Keep production classes explicit: relying only on the JMH runtime
+    // classpath can omit main output after a clean configuration-cache build.
+    from(mainSourceSet.output)
     from(jmh.output)
     from({
         jmh.runtimeClasspath
