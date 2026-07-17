@@ -81,14 +81,14 @@ load_fixture_entropy() {
 load_fixture_contract() {
   load_fixture_entropy
   if [[ $print_command == true ]]; then
-    fixture_expected="streamlens-java-oracle-v4:$fixture_seed:\
+    fixture_expected="streamlens-java-oracle-v5:$fixture_seed:\
 3333333333333333333333333333333333333333333333333333333333333333:\
 4444444444444444444444444444444444444444444444444444444444444444:\
 5555555555555555555555555555555555555555555555555555555555555555:\
 6666666666666666666666666666666666666666666666666666666666666666"
   else
     fixture_expected=${ASSESSMENT_FIXTURE_EXPECTED:-}
-    [[ $fixture_expected =~ ^streamlens-java-oracle-v4:${fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
+    [[ $fixture_expected =~ ^streamlens-java-oracle-v5:${fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
       || die 'ASSESSMENT_FIXTURE_EXPECTED is not the authenticated record for ASSESSMENT_FIXTURE_SEED'
   fi
 }

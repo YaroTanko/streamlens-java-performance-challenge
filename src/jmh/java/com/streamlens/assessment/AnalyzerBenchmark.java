@@ -46,7 +46,7 @@ public class AnalyzerBenchmark {
     static final String LOCAL_PARAMETER = "local";
     private static final long YEAR_ONE_EPOCH_SECOND = -62_135_596_800L;
     private static final byte[] RESULT_DOMAIN =
-            "streamlens-java-result-v4\0".getBytes(StandardCharsets.US_ASCII);
+            "streamlens-java-result-v5\0".getBytes(StandardCharsets.US_ASCII);
     private static final int[][] REQUIRED_ORDERS = {
         {0, 1, 2, 3, 4},
         {1, 4, 0, 3, 2},
@@ -585,14 +585,14 @@ public class AnalyzerBenchmark {
         static FixtureRandom create(byte[] seed, String domain) {
             try {
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                digest.update("streamlens-java-fixture-v4-key\0"
+                digest.update("streamlens-java-fixture-v5-key\0"
                         .getBytes(StandardCharsets.US_ASCII));
                 digest.update(seed);
                 digest.update((byte) 0);
                 digest.update(domain.getBytes(StandardCharsets.US_ASCII));
                 byte[] key = digest.digest();
 
-                digest.update("streamlens-java-fixture-v4-nonce\0"
+                digest.update("streamlens-java-fixture-v5-nonce\0"
                         .getBytes(StandardCharsets.US_ASCII));
                 digest.update(seed);
                 digest.update((byte) 0);

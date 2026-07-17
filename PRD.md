@@ -78,12 +78,12 @@ interference. A synthetic baseline overlay and restricted container reduce trust
 in candidate repository contents. None is a complete sandbox for same-process
 Java code, so interviewers must inspect the exact diff and explanation.
 
-### 5.1 `java-v4` activation
+### 5.1 `java-v5` activation
 
-A protected upstream default branch may call `java-v4` active only when all of
+A protected upstream default branch may call `java-v5` active only when all of
 the following exist as one immutable, verifiable release unit:
 
-- a `baseline-v4` tag that points to an immutable baseline commit;
+- a `baseline-v5` tag that points to an immutable baseline commit;
 - a workflow pin to that full commit SHA;
 - an immutable container image pinned by digest;
 - a successful real-runtime canary using that exact image; and
@@ -93,7 +93,7 @@ the following exist as one immutable, verifiable release unit:
 
 Until then, local tests and benchmarks are development evidence only, the
 protected-default-branch release record must say **pending activation**, and no
-candidate should be scored under `java-v4`. The immutable `baseline-v4` tag is
+candidate should be scored under `java-v5`. The immutable `baseline-v5` tag is
 the candidate snapshot (**B**), so its pre-activation prose and `PENDING` runner
 values remain historical after a later protected activation commit (**A**); they
 are intentionally not status authority. A activates the release by pinning B and
@@ -105,7 +105,7 @@ requires a new version and baseline rather than moving an existing tag or pin.
 
 ## 6. Candidate journey
 
-1. Fork the repository and create a branch from the immutable `baseline-v4` commit.
+1. Fork the repository and create a branch from the immutable `baseline-v5` commit.
 2. Do not merge, rebase, or update that candidate branch from the upstream default
    branch; it can contain later mutable activation metadata outside candidate scope.
 3. Read `README.md` and `TASK.md`; consult `PRD.md`, `DESIGN.md`, and `AGENTS.md`.
@@ -189,7 +189,7 @@ before input is consumed.
 Input timestamps represent an instant plus an explicit offset. Calendar text is
 parsed without using the host locale or default time zone, normalized to
 `java.time.Instant`, and compared as an instant. Equivalent offsets therefore
-group together. Leap-second text (`:60`) is not accepted by `java-v4`.
+group together. Leap-second text (`:60`) is not accepted by `java-v5`.
 
 Window alignment is fixed-duration and UTC-based, not local-calendar-based. To
 preserve the original StreamLens contract, the anchor is
@@ -312,7 +312,7 @@ The authoritative scored metrics are:
 
 Java's standard JMH/JFR toolchain does not provide an equally stable exact
 `objects/op` measurement across these runs. Object-allocation events and counts
-may be published as diagnostics, but `java-v4` must not score an allocation-count
+may be published as diagnostics, but `java-v5` must not score an allocation-count
 tier unless a separately validated, reproducible method is added in a new
 assessment version.
 
@@ -525,7 +525,7 @@ Repository-facing text is English and includes:
 
 ## 20. Release acceptance criteria
 
-`java-v4` is interview-ready only when current, retained evidence proves all of
+`java-v5` is interview-ready only when current, retained evidence proves all of
 the following:
 
 1. a clean checkout builds and tests on the pinned Java 21 patch release;
@@ -536,7 +536,7 @@ the following:
 5. independent, contract-preserving reference solutions demonstrate attainable
    20%, 50%, and 75% tiers without benchmark recognition;
 6. repeated same-host comparisons characterize noise and support the thresholds;
-7. the workflow pins the full immutable `baseline-v4` SHA and container digest;
+7. the workflow pins the full immutable `baseline-v5` SHA and container digest;
 8. the candidate tree is constructed from exactly two regular-file overlays;
 9. no candidate-owned command or file other than those overlays is executed;
 10. the exact image passes the complete real-runtime canary suite;
@@ -546,7 +546,7 @@ the following:
 14. every documented command, path, flag, metric, and artifact matches reality;
 15. at least two dry-run candidates can understand and attempt the task in the
     timed boundary, with interviewer observations retained; and
-16. the `java-v4` release is not called active until all preceding evidence is
+16. the `java-v5` release is not called active until all preceding evidence is
     reviewed on the protected default branch;
 17. the private evaluator is pinned, exercised for the candidate SHA, and reviewed
     as a pre-score gate; and

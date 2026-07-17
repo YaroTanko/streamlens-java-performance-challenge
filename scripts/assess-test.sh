@@ -31,6 +31,18 @@ set -euo pipefail
 prepared=$1
 mode=$2
 shift 2
+runtime_parent=$(dirname -- "$prepared")
+runtime_mode=$(stat -f '%Lp' "$runtime_parent" 2>/dev/null || stat -c '%a' "$runtime_parent")
+runtime_mode_value=$((8#$runtime_mode))
+(( (runtime_mode_value & 0001) != 0 && (runtime_mode_value & 0022) == 0 )) || {
+  echo 'fixture runtime parent is not safely traversable by the fixed container UID' >&2
+  exit 1
+}
+if find "$prepared" -type d ! -perm -0001 -print -quit | grep -q . \
+    || find "$prepared" -type f ! -perm -0004 -print -quit | grep -q .; then
+  echo 'fixture prepared tree is inaccessible to the fixed container UID' >&2
+  exit 1
+fi
 case "$mode" in
   test)
     [[ $# -eq 0 ]]
@@ -41,7 +53,7 @@ case "$mode" in
     token=${ORACLE_RESULT_TOKEN:?}
     seed=${ASSESSMENT_FIXTURE_SEED:?}
     digest=0000000000000000000000000000000000000000000000000000000000000000
-    printf '@@STREAMLENS_JAVA_ORACLE_RESULT %s streamlens-java-oracle-v4:%s:%s:%s:%s:%s\n' \
+    printf '@@STREAMLENS_JAVA_ORACLE_RESULT %s streamlens-java-oracle-v5:%s:%s:%s:%s:%s\n' \
       "$token" "$seed" "$digest" "$digest" "$digest" "$digest"
     ;;
   benchmark)
@@ -108,7 +120,7 @@ assessment="$output_parent/assessment"
 grep -Fq 'Result: ✅ passed' "$assessment/benchmarks/report.md"
 grep -Fq 'Overall level: **Middle**' "$assessment/benchmarks/report.md"
 grep -Fqx 'functional=passed' "$assessment/assessment-status.txt"
-grep -Fq '"assessment_version": "java-v4"' \
+grep -Fq '"assessment_version": "java-v5"' \
   "$assessment/evidence/manifest-core.json"
 for kind in cpu alloc; do
   for artifact in recording.jfr summary.txt hotspots.txt jmh.txt; do

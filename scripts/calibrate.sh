@@ -266,7 +266,7 @@ maximum_reference_tier=$(tier_from_rank "$maximum_reference_rank") \
   || die 'could not calculate maximum reference tier'
 
 {
-  echo '# Java v4 calibration summary'
+  echo '# Java v5 calibration summary'
   echo
   echo "- Baseline: \`$baseline_commit\`"
   echo "- A/A candidate: \`$aa_commit\`"
