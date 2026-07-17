@@ -12,6 +12,7 @@ check:
 	bash scripts/evidence-manifest-test.sh
 	bash scripts/isolation-test.sh
 	bash scripts/assess-test.sh
+	bash scripts/calibrate-test.sh
 	bash scripts/jmh-contract-test.sh
 
 benchmark:

@@ -3,10 +3,13 @@
 This repository is primarily designed for candidate optimization pull requests.
 Read `TASK.md` before starting; candidate scope is intentionally narrow.
 
-Assessment version 2 (`java-v2`) is pending. Maintainers must not schedule a
-scored session until the pinned `baseline-v2` release, exact image digest, real
-Docker-runtime canary, calibration, private-evaluator pre-score review, and other
-acceptance evidence in `PRD.md` are complete.
+Read current activation status and pins only from `RELEASES.md` and the trusted
+assessment workflow on the upstream protected default branch. The immutable
+`baseline-v3` tag and candidate branches are snapshots: their status text and
+intentionally `PENDING` runner values are historical and non-authoritative after
+activation. Maintainers must not schedule a scored session until the live release
+record shows the baseline/image pins, real Docker-runtime canary, calibration,
+private-evaluator pre-score review, and other acceptance evidence in `PRD.md`.
 
 ## Candidate fork and branch workflow
 
@@ -19,9 +22,15 @@ acceptance evidence in `PRD.md` are complete.
    cd streamlens-java-performance-challenge
    git remote add upstream <upstream-url>
    git fetch upstream --tags
-   git switch --detach baseline-v2
+   git switch --detach baseline-v3
    git switch -c optimize-analyzer
    ```
+
+   `baseline-v3` is the immutable candidate snapshot (**B**). Do not merge,
+   rebase, or otherwise update `optimize-analyzer` from the upstream default
+   branch after this point. That branch can later contain a protected activation
+   commit (**A**) and other files outside candidate scope; CI evaluates the exact
+   `B..candidate` diff.
 
 3. Before the timer, the interviewer verifies a clean checkout and working Java
    21/Gradle environment. During the timed session, run:
@@ -83,7 +92,9 @@ Trusted tooling reads the exact committed candidate blobs, validates that only
 the two allowed regular files changed, and type-checks `Analyzer.java` against the
 safe allow-list. It then creates a fresh tree from the immutable baseline and
 overlays only those files. Candidate tests, build files, scripts, workflows,
-generated files, symlinks, and submodules are not executed.
+generated files, symlinks, and submodules are not executed. The scope comparison
+is `baseline-v3..candidate`; a candidate branch must not bring in an upstream
+default-branch activation update.
 
 Fixed correctness and JMH commands run in the release's digest-pinned restricted
 container. A trusted baseline oracle verifies a fresh per-assessment randomized

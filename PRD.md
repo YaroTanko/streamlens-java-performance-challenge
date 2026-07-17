@@ -1,8 +1,11 @@
 # StreamLens Java Performance Challenge — Product Requirements Document
 
-**Status:** Pending `java-v2` activation
+**Live release authority:** Current activation status and pins are determined
+only by `RELEASES.md` and the trusted assessment workflow on the upstream
+protected default branch. Immutable baseline tags and candidate branches are
+snapshots, not live release records.
 
-**Version:** 2.0-rc
+**Version:** 3.0
 
 **Implementation language:** Java 21
 **Source of truth:** If another repository document conflicts with this PRD,
@@ -75,12 +78,12 @@ interference. A synthetic baseline overlay and restricted container reduce trust
 in candidate repository contents. None is a complete sandbox for same-process
 Java code, so interviewers must inspect the exact diff and explanation.
 
-### 5.1 `java-v2` activation
+### 5.1 `java-v3` activation
 
-`java-v2` remains pending until all of the following exist as one immutable,
-verifiable release unit:
+A protected upstream default branch may call `java-v3` active only when all of
+the following exist as one immutable, verifiable release unit:
 
-- a `baseline-v2` tag that points to an immutable baseline commit;
+- a `baseline-v3` tag that points to an immutable baseline commit;
 - a workflow pin to that full commit SHA;
 - an immutable container image pinned by digest;
 - a successful real-runtime canary using that exact image; and
@@ -89,22 +92,30 @@ verifiable release unit:
 - a pinned, reviewed private-evaluator pre-score gate.
 
 Until then, local tests and benchmarks are development evidence only, the
-repository must say **pending activation**, and no candidate should be scored
-under `java-v2`. Changing the contract, workloads, JDK, source policy, runner, or
-image after activation requires a new version and baseline rather than moving the
-existing tag or pin.
+protected-default-branch release record must say **pending activation**, and no
+candidate should be scored under `java-v3`. The immutable `baseline-v3` tag is
+the candidate snapshot (**B**), so its pre-activation prose and `PENDING` runner
+values remain historical after a later protected activation commit (**A**); they
+are intentionally not status authority. A activates the release by pinning B and
+the image on the default branch without moving B. Candidate branches start from B
+and must not merge, rebase, or update from the upstream default branch: scope is
+checked as `B..candidate` and may change only the two allowed files. Changing the
+contract, workloads, JDK, source policy, runner, or image after activation
+requires a new version and baseline rather than moving an existing tag or pin.
 
 ## 6. Candidate journey
 
-1. Fork the repository and create a branch from the immutable `baseline-v2` commit.
-2. Read `README.md` and `TASK.md`; consult `PRD.md`, `DESIGN.md`, and `AGENTS.md`.
-3. Run correctness, a local benchmark, and at least one measured profile.
-4. Use the evidence and any AI assistant to choose an optimization.
-5. Change only `Analyzer.java` and `OPTIMIZATION.md`.
-6. Preserve the full contract and rerun the checks.
-7. Record 5–10 concise bullets, including the actual profiler and hotspot.
-8. Commit and record the SHA before the timer ends.
-9. Push that SHA, open an upstream PR, and review the CI result.
+1. Fork the repository and create a branch from the immutable `baseline-v3` commit.
+2. Do not merge, rebase, or update that candidate branch from the upstream default
+   branch; it can contain later mutable activation metadata outside candidate scope.
+3. Read `README.md` and `TASK.md`; consult `PRD.md`, `DESIGN.md`, and `AGENTS.md`.
+4. Run correctness, a local benchmark, and at least one measured profile.
+5. Use the evidence and any AI assistant to choose an optimization.
+6. Change only `Analyzer.java` and `OPTIMIZATION.md`.
+7. Preserve the full contract and rerun the checks.
+8. Record 5–10 concise bullets, including the actual profiler and hotspot.
+9. Commit and record the SHA before the timer ends.
+10. Push that SHA, open an upstream PR, and review the CI result.
 
 ## 7. Event input
 
@@ -178,7 +189,7 @@ before input is consumed.
 Input timestamps represent an instant plus an explicit offset. Calendar text is
 parsed without using the host locale or default time zone, normalized to
 `java.time.Instant`, and compared as an instant. Equivalent offsets therefore
-group together. Leap-second text (`:60`) is not accepted by `java-v2`.
+group together. Leap-second text (`:60`) is not accepted by `java-v3`.
 
 Window alignment is fixed-duration and UTC-based, not local-calendar-based. To
 preserve the original StreamLens contract, the anchor is
@@ -301,7 +312,7 @@ The authoritative scored metrics are:
 
 Java's standard JMH/JFR toolchain does not provide an equally stable exact
 `objects/op` measurement across these runs. Object-allocation events and counts
-may be published as diagnostics, but `java-v2` must not score an allocation-count
+may be published as diagnostics, but `java-v3` must not score an allocation-count
 tier unless a separately validated, reproducible method is added in a new
 assessment version.
 
@@ -376,8 +387,9 @@ The public assessor is a necessary gate, not the final score decision. Before a
 candidate is assigned a score, maintainers must run the separately maintained,
 pinned private evaluator for the same committed candidate SHA and review its
 result together with the human debrief. The private evaluator is intentionally
-outside the candidate repository and is a release precondition; this pending
-release makes no claim that the gate has been completed.
+outside the candidate repository and is a release precondition. Whether that gate
+has been completed for a session is determined by the live protected-default-
+branch release record, not by a baseline or candidate snapshot.
 
 These labels describe this implementation's measured result against this
 baseline. They do not prove Java level, general seniority, authorship, learning
@@ -513,7 +525,7 @@ Repository-facing text is English and includes:
 
 ## 20. Release acceptance criteria
 
-`java-v2` is interview-ready only when current, retained evidence proves all of
+`java-v3` is interview-ready only when current, retained evidence proves all of
 the following:
 
 1. a clean checkout builds and tests on the pinned Java 21 patch release;
@@ -524,7 +536,7 @@ the following:
 5. independent, contract-preserving reference solutions demonstrate attainable
    20%, 50%, and 75% tiers without benchmark recognition;
 6. repeated same-host comparisons characterize noise and support the thresholds;
-7. the workflow pins the full immutable `baseline-v2` SHA and container digest;
+7. the workflow pins the full immutable `baseline-v3` SHA and container digest;
 8. the candidate tree is constructed from exactly two regular-file overlays;
 9. no candidate-owned command or file other than those overlays is executed;
 10. the exact image passes the complete real-runtime canary suite;
@@ -534,7 +546,8 @@ the following:
 14. every documented command, path, flag, metric, and artifact matches reality;
 15. at least two dry-run candidates can understand and attempt the task in the
     timed boundary, with interviewer observations retained; and
-16. `baseline-v2` is not called active until all preceding evidence is reviewed;
+16. the `java-v3` release is not called active until all preceding evidence is
+    reviewed on the protected default branch;
 17. the private evaluator is pinned, exercised for the candidate SHA, and reviewed
     as a pre-score gate; and
 18. retained calibration demonstrates that the public thresholds are stable and

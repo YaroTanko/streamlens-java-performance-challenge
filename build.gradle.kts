@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.streamlens"
-version = "2.0.0-rc"
+version = "3.0.0"
 
 repositories {
     mavenCentral()

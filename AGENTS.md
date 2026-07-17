@@ -11,11 +11,14 @@ profile result that was not measured.
 2. `TASK.md` defines candidate scope and scoring.
 3. `DESIGN.md` summarizes architecture and invariants.
 
-Assessment version 2 (`java-v2`) is **pending activation** until maintainers have
-published an immutable `baseline-v2`, pinned the workflow to its full commit SHA
-and exact container-image digest, passed the documented real Docker-runtime
-canary, completed calibration, and reviewed the private-evaluator pre-score gate.
-Do not describe `java-v2` as active before all of those facts are verifiable.
+Read current `java-v3` activation status and pins only from `RELEASES.md` and the
+trusted assessment workflow on the upstream protected default branch. The
+immutable `baseline-v3` tag and candidate checkouts are snapshots: their
+pre-activation prose and intentionally `PENDING` runner values are historical and
+non-authoritative after activation. A live release may be called active only when
+maintainers publish the baseline/image pins, pass the documented real
+Docker-runtime canary, complete calibration, and review the private-evaluator
+pre-score gate. Do not infer live status from a baseline tag.
 
 ## Candidate scope
 
@@ -28,6 +31,11 @@ Do not edit or generate tests, fixtures, benchmark code, scripts, build files,
 other documentation, workflows, or additional implementation files. If a
 requested change needs a protected path, explain the conflict instead of making
 the change.
+
+Start from the immutable `baseline-v3` snapshot and do not merge, rebase, or
+update the candidate branch from the upstream default branch. That branch may
+contain later protected activation metadata; the scope guard compares
+`baseline-v3..candidate` and rejects every path other than the two above.
 
 ## Candidate source policy
 

@@ -13,19 +13,22 @@ on:
         required: true
         type: string
       candidate_sha:
-        description: Full candidate commit SHA descended from baseline-v2
+        description: Full candidate commit SHA descended from baseline-v3
         required: true
         type: string
 
 permissions:
   contents: read
+  packages: read
 
 env:
-  ASSESSMENT_VERSION: java-v2
-  # Release gate: replace both explicit PENDING values only after baseline-v2
-  # and the complete exact-image canary evidence have been reviewed.
-  ASSESSMENT_BASELINE_SHA: PENDING_BASELINE_V2_SHA
-  ASSESSMENT_DOCKER_IMAGE: PENDING_JAVA_V2_IMAGE_DIGEST
+  ASSESSMENT_VERSION: java-v3
+  # The immutable candidate snapshot intentionally retains PENDING values. A
+  # later protected default-branch activation commit pins baseline-v3 and the
+  # exact image after reviewed canary/calibration evidence; candidates must not
+  # copy that activation commit into their B..candidate submission branch.
+  ASSESSMENT_BASELINE_SHA: PENDING_BASELINE_V3_SHA
+  ASSESSMENT_DOCKER_IMAGE: PENDING_JAVA_V3_IMAGE_DIGEST
   BENCH_SAMPLES: '7'
   PROFILE_SCENARIO: Balanced
   PROFILE_TIME: 2s
@@ -34,7 +37,7 @@ env:
   EVIDENCE_PARENT: ${{ github.workspace }}/assessment-evidence
 
 concurrency:
-  group: streamlens-java-v2-${{ github.event.pull_request.number || github.run_id }}
+  group: streamlens-java-v3-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -61,11 +64,11 @@ jobs:
             printf 'trusted_workflow=%s\n' "$GITHUB_SHA"
           } >"$EVIDENCE_PARENT/workflow-context.txt"
           if [[ ! "$ASSESSMENT_BASELINE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            echo 'java-v2 is pending: immutable baseline SHA is not pinned.' >&2
+            echo 'java-v3 is pending: immutable baseline SHA is not pinned.' >&2
             exit 2
           fi
           if [[ ! "$ASSESSMENT_DOCKER_IMAGE" =~ ^[A-Za-z0-9][A-Za-z0-9._/:-]*@sha256:[0-9a-f]{64}$ ]]; then
-            echo 'java-v2 is pending: exact assessment image digest is not pinned.' >&2
+            echo 'java-v3 is pending: exact assessment image digest is not pinned.' >&2
             exit 2
           fi
           if [[ ! "$CANDIDATE_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ \
@@ -74,7 +77,7 @@ jobs:
             exit 2
           fi
 
-      - name: Check out immutable baseline-v2
+      - name: Check out immutable baseline-v3
         if: steps.pins.outcome == 'success'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -142,7 +145,7 @@ jobs:
           trusted_git -C candidate cat-file -e "$ASSESSMENT_BASELINE_SHA^{commit}"
           trusted_git -C candidate merge-base --is-ancestor \
             "$ASSESSMENT_BASELINE_SHA" "$CANDIDATE_SHA" || {
-            echo 'candidate is not descended from immutable baseline-v2' >&2
+            echo 'candidate is not descended from immutable baseline-v3' >&2
             exit 1
           }
 
@@ -162,9 +165,24 @@ jobs:
           cat "$EVIDENCE_PARENT/candidate-preflight.txt"
           exit "$status"
 
+      - name: Authenticate read-only pull from GHCR
+        id: image_auth
+        if: steps.preflight.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin \
+            >"$EVIDENCE_PARENT/docker-login.log" 2>&1
+          status=$?
+          set -e
+          cat "$EVIDENCE_PARENT/docker-login.log"
+          exit "$status"
+
       - name: Pull pinned runtime image
         id: image
-        if: steps.preflight.outcome == 'success'
+        if: steps.image_auth.outcome == 'success'
         continue-on-error: true
         run: |
           set +e
@@ -175,9 +193,39 @@ jobs:
           cat "$EVIDENCE_PARENT/docker-pull.log"
           exit "$status"
 
+      - name: Verify exact image provenance
+        id: provenance
+        if: steps.image.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set +e
+          expected_source="https://github.com/$GITHUB_REPOSITORY"
+          actual_revision=$(docker image inspect --format \
+            '{{ index .Config.Labels "org.opencontainers.image.revision" }}' \
+            "$ASSESSMENT_DOCKER_IMAGE")
+          actual_version=$(docker image inspect --format \
+            '{{ index .Config.Labels "com.streamlens.assessment.version" }}' \
+            "$ASSESSMENT_DOCKER_IMAGE")
+          actual_source=$(docker image inspect --format \
+            '{{ index .Config.Labels "org.opencontainers.image.source" }}' \
+            "$ASSESSMENT_DOCKER_IMAGE")
+          [[ "$actual_revision" == "$ASSESSMENT_BASELINE_SHA" \
+             && "$actual_version" == java-v3 \
+             && "$actual_source" == "$expected_source" ]]
+          status=$?
+          set -e
+          {
+            printf 'expected_revision=%s\n' "$ASSESSMENT_BASELINE_SHA"
+            printf 'actual_revision=%s\n' "$actual_revision"
+            printf 'actual_version=%s\n' "$actual_version"
+            printf 'actual_source=%s\n' "$actual_source"
+          } >"$EVIDENCE_PARENT/image-provenance.txt"
+          cat "$EVIDENCE_PARENT/image-provenance.txt"
+          exit "$status"
+
       - name: Run complete exact-image real-runtime canary
         id: canary
-        if: steps.image.outcome == 'success'
+        if: steps.provenance.outcome == 'success'
         continue-on-error: true
         working-directory: baseline
         run: |
@@ -196,7 +244,7 @@ jobs:
         continue-on-error: true
         run: docker pull "$ASSESSMENT_DOCKER_IMAGE" >"$EVIDENCE_PARENT/docker-refresh.log" 2>&1
 
-      - name: Run baseline-owned unified Java v2 assessor
+      - name: Run baseline-owned unified Java v3 assessor
         id: assessor
         if: steps.refresh.outcome == 'success'
         continue-on-error: true
@@ -222,12 +270,14 @@ jobs:
         if: always()
         run: |
           {
-            echo '# StreamLens Java v2 assessment'
+            echo '# StreamLens Java v3 assessment'
             echo
             echo "- Release pins: ${{ steps.pins.outcome }}"
             echo "- Revision/ancestry check: ${{ steps.revisions.outcome }}"
             echo "- Candidate source/scope: ${{ steps.preflight.outcome }}"
+            echo "- GHCR authentication: ${{ steps.image_auth.outcome }}"
             echo "- Exact image pull: ${{ steps.image.outcome }}"
+            echo "- Exact image provenance: ${{ steps.provenance.outcome }}"
             echo "- Complete real-runtime canary: ${{ steps.canary.outcome }}"
             echo "- Image refresh: ${{ steps.refresh.outcome }}"
             echo "- Public assessor: ${{ steps.assessor.outcome }}"
@@ -246,11 +296,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: streamlens-java-v2-${{ github.run_id }}
+          name: streamlens-java-v3-${{ github.run_id }}
           path: assessment-evidence/
           if-no-files-found: error
           include-hidden-files: true
-          retention-days: 14
+          retention-days: 90
 
       - name: Enforce assessment result
         if: always()
@@ -259,7 +309,9 @@ jobs:
           [[ '${{ steps.pins.outcome }}' == success \
              && '${{ steps.revisions.outcome }}' == success \
              && '${{ steps.preflight.outcome }}' == success \
+             && '${{ steps.image_auth.outcome }}' == success \
              && '${{ steps.image.outcome }}' == success \
+             && '${{ steps.provenance.outcome }}' == success \
              && '${{ steps.canary.outcome }}' == success \
              && '${{ steps.refresh.outcome }}' == success \
              && '${{ steps.assessor.outcome }}' == success ]] || exit 1

@@ -81,14 +81,14 @@ load_fixture_entropy() {
 load_fixture_contract() {
   load_fixture_entropy
   if [[ $print_command == true ]]; then
-    fixture_expected="streamlens-java-oracle-v2:$fixture_seed:\
+    fixture_expected="streamlens-java-oracle-v3:$fixture_seed:\
 3333333333333333333333333333333333333333333333333333333333333333:\
 4444444444444444444444444444444444444444444444444444444444444444:\
 5555555555555555555555555555555555555555555555555555555555555555:\
 6666666666666666666666666666666666666666666666666666666666666666"
   else
     fixture_expected=${ASSESSMENT_FIXTURE_EXPECTED:-}
-    [[ $fixture_expected =~ ^streamlens-java-oracle-v2:${fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
+    [[ $fixture_expected =~ ^streamlens-java-oracle-v3:${fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
       || die 'ASSESSMENT_FIXTURE_EXPECTED is not the authenticated record for ASSESSMENT_FIXTURE_SEED'
   fi
 }
@@ -130,9 +130,11 @@ seed=$1
 key=$2
 token=$3
 ./gradlew --offline --no-daemon --console=plain --quiet jmhJar >/tmp/gradle.txt 2>&1
-set -- build/libs/*-jmh.jar
-test "$#" -eq 1
-jar=$1
+version=$(sed -nE '"'"'s/^version = "([^"]+)"$/\1/p'"'"' build.gradle.kts)
+test -n "$version"
+case "$version" in *[!0-9A-Za-z._-]* ) exit 2 ;; esac
+jar="build/libs/streamlens-java-performance-challenge-${version}-jmh.jar"
+test -f "$jar" && test ! -L "$jar"
 java -Xms1g -Xmx1g -XX:+UseG1GC -XX:ActiveProcessorCount=1 \
   -cp "$jar" com.streamlens.assessment.BenchmarkVerifier \
   oracle --seed "$seed" --auth-key "$key" \
@@ -170,9 +172,11 @@ seed=$2
 expected=$3
 key=$4
 ./gradlew --offline --no-daemon --console=plain --quiet jmhJar >/tmp/gradle.txt 2>&1
-set -- build/libs/*-jmh.jar
-test "$#" -eq 1
-jar=$1
+version=$(sed -nE '"'"'s/^version = "([^"]+)"$/\1/p'"'"' build.gradle.kts)
+test -n "$version"
+case "$version" in *[!0-9A-Za-z._-]* ) exit 2 ;; esac
+jar="build/libs/streamlens-java-performance-challenge-${version}-jmh.jar"
+test -f "$jar" && test ! -L "$jar"
 java -Xms1g -Xmx1g -XX:+UseG1GC -XX:ActiveProcessorCount=1 \
   -cp "$jar" com.streamlens.assessment.BenchmarkVerifier \
   verify --seed "$seed" --expected "$expected" --auth-key "$key" \
@@ -241,9 +245,11 @@ seed=$5
 expected=$6
 key=$7
 ./gradlew --offline --no-daemon --console=plain --quiet jmhJar
-set -- build/libs/*-jmh.jar
-test "$#" -eq 1
-jar=$1
+version=$(sed -nE '"'"'s/^version = "([^"]+)"$/\1/p'"'"' build.gradle.kts)
+test -n "$version"
+case "$version" in *[!0-9A-Za-z._-]* ) exit 2 ;; esac
+jar="build/libs/streamlens-java-performance-challenge-${version}-jmh.jar"
+test -f "$jar" && test ! -L "$jar"
 java -Xms1g -Xmx1g -XX:+UseG1GC -XX:ActiveProcessorCount=1 \
   -cp "$jar" com.streamlens.assessment.BenchmarkVerifier \
   verify --seed "$seed" --expected "$expected" --auth-key "$key" \

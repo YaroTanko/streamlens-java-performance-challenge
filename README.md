@@ -6,12 +6,15 @@ deterministic aggregate JSON. The repository is also a 30-minute, AI-assisted
 performance exercise: preserve the contract, improve the analyzer, and let CI
 compare the result with an immutable baseline.
 
-> **Release status: java-v2 pending activation.** Do not use this repository to
-> score a candidate until maintainers have published immutable `baseline-v2`,
-> pinned its full SHA and exact container-image digest, retained a passing real
-> Docker-runtime canary, and completed calibration. A separate private-evaluator
-> review is also required before any score is relied upon. `PRD.md` contains the
-> complete release gate.
+> **Live release authority:** read activation state and pins only from
+> `RELEASES.md` and the trusted assessment workflow on the upstream protected
+> default branch. The immutable `baseline-v3` tag and every candidate branch are
+> snapshots, not live release records: their status prose and intentionally
+> `PENDING` runner values are historical and non-authoritative after activation.
+>
+> Before scoring, verify in that upstream record that the immutable `baseline-v3`
+> and image pins, exact-image Docker canary, calibration, and private-evaluator
+> pre-score gate are complete. `PRD.md` contains the complete gate.
 
 `PRD.md` is the product and assessment source of truth. Candidates read
 `TASK.md` before changing code; interviewers use `INTERVIEWER_GUIDE.md` and
@@ -66,7 +69,10 @@ Use any AI assistant and any local profiling/analysis tools. Change exactly:
 Keep all observable behavior unchanged. Replace the note template with 5–10
 truthful bullets, including the measured profiler/tool and observed hotspot. Open
 a pull request containing the commit SHA recorded before the 30-minute timer
-ended.
+ended. Start from `baseline-v3` and do not merge, rebase, or otherwise update the
+candidate branch from the upstream default branch; that branch later carries
+mutable activation metadata. Scope validation compares `baseline-v3..candidate`
+and permits only these two paths.
 
 CI first checks scope, the safe-JDK source policy, and correctness. It then builds
 a fresh immutable-baseline tree with only those two candidate overlays and runs
@@ -84,8 +90,8 @@ not a Java level or hiring outcome.
 
 ## Maintainer activation boundary
 
-The repository becomes `java-v2` only after evidence proves the full gate in
-`PRD.md`, including:
+The protected upstream default branch becomes an active `java-v3` release only
+after evidence proves the full gate in `PRD.md`, including:
 
 - clean Java 21 build and contract tests;
 - calibrated baseline and attainable reference tiers;
@@ -98,7 +104,10 @@ The repository becomes `java-v2` only after evidence proves the full gate in
 - completed calibration plus a pinned, reviewed private-evaluator result.
 
 Development tests or a mock runner do not justify changing the status banner to
-active. Activation is a release decision over one pinned evidence set.
+active. Activation is a release decision over one pinned evidence set. The
+immutable candidate baseline remains unchanged: a later protected activation
+commit records the live status and pins on the default branch rather than editing
+`baseline-v3`.
 
 ## Documentation
 

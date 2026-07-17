@@ -42,10 +42,11 @@ fi
 
 cd -- "$root"
 ./gradlew --no-daemon --console=plain jmhJar
-jars=(build/libs/*-jmh.jar)
-[[ ${#jars[@]} -eq 1 && -f ${jars[0]} && ! -L ${jars[0]} ]] \
-  || die 'expected exactly one runnable JMH jar'
-jar=${jars[0]}
+version=$(sed -nE 's/^version = "([^"]+)"$/\1/p' build.gradle.kts)
+[[ -n $version && $version != *$'\n'* && $version =~ ^[0-9][0-9A-Za-z._-]*$ ]] \
+  || die 'could not determine the protected project version'
+jar="build/libs/streamlens-java-performance-challenge-${version}-jmh.jar"
+[[ -f $jar && ! -L $jar ]] || die "missing runnable JMH jar for version $version"
 
 staging=$(mktemp -d "$parent/.streamlens-java-${kind}.XXXXXX")
 trap 'rm -rf -- "$staging"' EXIT HUP INT TERM

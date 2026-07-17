@@ -1,10 +1,13 @@
 # Candidate Task
 
-> **Release notice:** assessment version 2 (`java-v2`) is pending activation. Maintainers
-> must not start or score a candidate session until the repository identifies a
-> pinned immutable `baseline-v2` release, exact image digest, successful real
-> Docker-runtime canary, calibration evidence, and private-evaluator pre-score
-> review.
+> **Release-state authority:** Only `RELEASES.md` and the trusted assessment
+> workflow on the upstream protected default branch establish current activation
+> status and pins. The immutable `baseline-v3` tag and a candidate checkout are
+> snapshots; their release wording and intentionally `PENDING` runner values are
+> historical and non-authoritative after activation. Do not start or score a
+> session until the live release record identifies the baseline/image pins,
+> exact-image Docker canary, calibration evidence, and private-evaluator
+> pre-score review.
 
 ## Objective and timebox
 
@@ -18,9 +21,11 @@ commit SHA, whichever comes first. Clone/JDK setup, pushing that SHA, opening th
 pull request, CI queue/runtime, and reading the report are untimed. Do not alter
 the submitted implementation or notes after recording the SHA.
 
-For an active release, start the branch from the immutable `baseline-v2` commit
-identified by the interviewer. CI rejects a submission that is not descended from
-that exact assessment base.
+For a release the interviewer has verified as active from the upstream default
+branch, start from the immutable `baseline-v3` commit identified there. Do not
+merge, rebase, or otherwise update the candidate branch from the upstream default
+branch after starting it. CI checks `baseline-v3..candidate`, so activation
+metadata and any other upstream change make the submission out of scope.
 
 ## Allowed changes
 
@@ -103,7 +108,7 @@ CI constructs a fresh tree from the immutable baseline and overlays only your tw
 deliverables. It compares baseline and candidate in separate equivalently warmed
 JVM forks on the same runner for Balanced, HighCardinality, and MostlyFiltered.
 
-`java-v2` scores two geometric-mean metrics:
+`java-v3` scores two geometric-mean metrics:
 
 - execution time (`ns/op`); and
 - normalized allocation volume (`B/op`).
@@ -120,7 +125,7 @@ at least 20% improvement in one metric, no more than 20% geometric-mean regressi
 in the other, and no more than 30% regression in any scenario/metric pair.
 Correctness, scope, source-policy, or response-format failure always fails first.
 
-Java allocation-event/object-count profiles are diagnostic in `java-v2`, not a
+Java allocation-event/object-count profiles are diagnostic in `java-v3`, not a
 third score, because they have not been established as equally reproducible
 `objects/op` measurements. CPU and allocation profiles are collected separately
 from scored samples.
@@ -130,11 +135,12 @@ two points of a tier boundary, the interviewer may rerun the exact same SHA once
 and use the lower inconsistent result. Numeric tiers label this optimization
 only. They are not your job level and cannot replace human review.
 
-For an active release, CI creates a fresh randomized corpus for the assessment,
-uses the immutable baseline as the trusted oracle for complete-result verification,
-and then measures the candidate against the same corpus. The public corpus and
-its evidence do not replace the separate private evaluator or the interviewer
-debrief; both are pre-score gates maintained outside candidate scope.
+For a release verified as active from the upstream default branch, CI creates a
+fresh randomized corpus for the assessment, uses the immutable baseline as the
+trusted oracle for complete-result verification, and then measures the candidate
+against the same corpus. The public corpus and its evidence do not replace the
+separate private evaluator or the interviewer debrief; both are pre-score gates
+maintained outside candidate scope.
 
 ## Deliverables
 
