@@ -1,0 +1,103 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.streamlens'
+version = '1.0.0'
+
+sourceSets {
+    jmh {
+        java.srcDir 'src/jmh/java'
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    jmhImplementation.extendsFrom implementation
+    jmhRuntimeOnly.extendsFrom runtimeOnly
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.20.1'
+
+    testImplementation platform('org.junit:junit-bom:5.14.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    jmhImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
+}
+
+application {
+    mainClass = 'com.streamlens.cli.Main'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.compilerArgs += ['-Xlint:all', '-Werror']
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    testLogging {
+        events 'failed', 'skipped'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.register('jmh', JavaExec) {
+    group = 'benchmark'
+    description = 'Runs the deterministic StreamLens JMH workloads.'
+    dependsOn tasks.named('jmhClasses')
+    classpath = sourceSets.jmh.runtimeClasspath
+    mainClass = 'org.openjdk.jmh.Main'
+    doFirst {
+        file("${layout.buildDirectory.get()}/results/jmh").mkdirs()
+    }
+    args = [
+        providers.gradleProperty('jmhInclude').getOrElse('com.streamlens.assessment.StreamLensBenchmark'),
+        '-wi', providers.gradleProperty('jmhWarmupIterations').getOrElse('2'),
+        '-w', providers.gradleProperty('jmhWarmupTime').getOrElse('300ms'),
+        '-i', providers.gradleProperty('jmhIterations').getOrElse('5'),
+        '-r', providers.gradleProperty('jmhMeasurementTime').getOrElse('500ms'),
+        '-f', providers.gradleProperty('jmhForks').getOrElse('1'),
+        '-t', '1',
+        '-prof', 'gc',
+        '-rf', 'json',
+        '-rff', layout.buildDirectory.file('results/jmh/results.json').get().asFile.absolutePath,
+        '-foe', 'true'
+    ]
+    if (providers.gradleProperty('jmhJvmArgsAppend').isPresent()) {
+        args += ['-jvmArgsAppend', providers.gradleProperty('jmhJvmArgsAppend').get()]
+    }
+}
+
+tasks.register('benchmarkSmoke', JavaExec) {
+    group = 'verification'
+    description = 'Runs one short JMH iteration for CI wiring verification.'
+    dependsOn tasks.named('jmhClasses')
+    classpath = sourceSets.jmh.runtimeClasspath
+    mainClass = 'org.openjdk.jmh.Main'
+    args = [
+        'com.streamlens.assessment.StreamLensBenchmark',
+        '-wi', '0', '-i', '1', '-r', '150ms', '-f', '1', '-t', '1',
+        '-prof', 'gc', '-foe', 'true'
+    ]
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('jmhClasses')
+}
