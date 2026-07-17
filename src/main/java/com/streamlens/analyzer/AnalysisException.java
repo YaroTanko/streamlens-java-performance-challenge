@@ -1,22 +1,27 @@
 package com.streamlens.analyzer;
 
-/** Input or aggregation error with the one-based source line where it occurred. */
+import java.io.IOException;
+
+/** A checked failure while validating or aggregating an input stream. */
 public final class AnalysisException extends Exception {
     private static final long serialVersionUID = 1L;
 
-    private final long lineNumber;
-
-    public AnalysisException(long lineNumber, String message) {
-        super("line " + lineNumber + ": " + message);
-        this.lineNumber = lineNumber;
+    public AnalysisException(String message) {
+        super(message);
     }
 
-    public AnalysisException(long lineNumber, String message, Throwable cause) {
-        super("line " + lineNumber + ": " + message, cause);
-        this.lineNumber = lineNumber;
+    public AnalysisException(String message, Throwable cause) {
+        super(message, cause);
     }
 
-    public long lineNumber() {
-        return lineNumber;
+    /** Returns the stable contract message without exposing implementation causes. */
+    public String detail() {
+        return super.getMessage();
+    }
+
+    /** Creates the contract's line-numbered wrapper for an input read failure. */
+    public static AnalysisException readFailure(int lineNumber, IOException cause) {
+        return new AnalysisException(
+                "line " + lineNumber + ": read input: " + cause.getMessage(), cause);
     }
 }

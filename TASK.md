@@ -1,86 +1,150 @@
 # Candidate Task
 
-## Objective
+> **Release-state authority:** Only `RELEASES.md` and the trusted assessment
+> workflow on the upstream protected default branch establish current activation
+> status and pins. The immutable `baseline-v3` tag and a candidate checkout are
+> snapshots; their release wording and intentionally `PENDING` runner values are
+> historical and non-authoritative after activation. Do not start or score a
+> session until the live release record identifies the baseline/image pins,
+> exact-image Docker canary, calibration evidence, and private-evaluator
+> pre-score review.
+
+## Objective and timebox
 
 You have up to 30 minutes to profile and improve StreamLens performance without
-changing observable behavior. Java 21, AI assistants, JFR, other profilers, and
-source-analysis tools are allowed. Correctness is mandatory.
+changing observable behavior. You may use any AI assistant, profiler, IDE,
+editor, or local analysis tool. Correctness and honest reporting are mandatory.
 
-The timer starts after a clean checkout and Java 21 are ready. It ends at 30:00
-or when you record the final candidate commit SHA. Clone/toolchain setup, pushing
-that SHA, opening the pull request, CI runtime, and reading the report are untimed.
+The interviewer starts the timer only after you have a clean checkout and can run
+the Java 21 project. The timer stops at 30:00 or when you record your final local
+commit SHA, whichever comes first. Clone/JDK setup, pushing that SHA, opening the
+pull request, CI queue/runtime, and reading the report are untimed. Do not alter
+the submitted implementation or notes after recording the SHA.
 
-## Accepted submission modes
+For a release the interviewer has verified as active from the upstream default
+branch, start from the immutable `baseline-v3` commit identified there. Do not
+merge, rebase, or otherwise update the candidate branch from the upstream default
+branch after starting it. CI checks `baseline-v3..candidate`, so activation
+metadata and any other upstream change make the submission out of scope.
 
-Change at least one and no more than these two files:
+## Allowed changes
+
+Your complete pull request may modify exactly:
 
 - `src/main/java/com/streamlens/analyzer/Analyzer.java`
 - `OPTIMIZATION.md`
 
-The evaluator records one of three modes:
-
-- `implementation-only`: assess the analyzer; notes are reported as not submitted.
-- `notes-only`: validate the explanation; no implementation performance credit.
-- `implementation-and-notes`: assess both implementation and explanation.
-
-Everything else is protected, including tests, benchmark code, fixtures, Gradle
-metadata and wrapper, scripts, documentation, and workflows. Do not move the
-implementation into another source file.
+Everything else is protected: tests, fixtures, benchmarks, scripts, build files,
+other sources, documentation, generated files, module metadata, and workflows.
+Do not add a file or move analyzer logic into another file. CI rejects a wider
+diff.
 
 ## Required behavior
 
-- Preserve `Analyzer.analyze(Reader, Config)` and all records and JSON fields.
-- Preserve parsing, validation, filtering, ordering, interruption, and error
-  behavior in [PRD.md](PRD.md).
-- Preserve sequential IEEE-754 `double` addition in input order; do not reorder
-  sums, use approximations, or skip valid input work.
-- Interpret only the last occurrence of an exact required field name. Unknown
-  fields remain syntax-checked but are not converted to application values.
-- Do not identify, special-case, or weaken tests and benchmark workloads.
-- Keep the optimization ordinary, reviewable, and achievable within the exercise.
+- Preserve `Analyzer.analyze(InputStream, AnalyzerConfig)` and its checked error
+  and interruption behavior.
+- Preserve strict UTF-8 and JSON parsing, validation, filtering, deterministic
+  ordering, line-numbered errors, and earliest-line precedence from `PRD.md`.
+- Syntax-check but do not application-convert ignored fields; compare names after
+  JSON string decoding and interpret only the final value of a duplicate.
+- Preserve exact counts/membership and input-order Java `double` sums. Do not
+  reorder additions, approximate results, or silently accept infinity.
+- Preserve year-one-anchored nanosecond time windows, UTC timestamp output, Java
+  `String.compareTo` ordering, and deterministic CLI JSON.
+- Keep production analyzer code Java 21 JDK-only.
+- Never hard-code, recognize, or special-case protected scenarios or fixtures.
 
-## Candidate source policy
+## Safe-JDK source policy
 
-`Analyzer.java` may use the protected Jackson-core parser API and ordinary
-`java.io` reader/error classes plus `java.math`, `java.time`, and `java.util`.
-The source guard rejects filesystem, network, process, native, reflection,
-management, JFR/diagnostic, class-loading, direct-output, JVM-global, and
-benchmark-recognition APIs. Java Unicode escapes and static imports are also
-rejected. `Thread` is allowed only as
-`Thread.currentThread().isInterrupted()` for cooperative interruption.
+`Analyzer.java` may use only the explicit safe Java 21 types accepted by the
+repository source guard for input parsing, character decoding, time arithmetic,
+collections, and ordinary language operations. The guard parses and type-checks
+the exact committed source.
 
-The guard is a review aid, not a proof of benign behavior. The interviewer still
-reviews the exact source. Profilers and process tools outside `Analyzer.java`
-remain unrestricted; do not move them into the analyzer to evade this boundary.
+Do not use filesystem/output, network/IPC, subprocess, reflection/method-handle,
+dynamic class-loading, native, instrumentation, management, JFR-control, logging,
+serialization-hook, test-framework, environment/system-property, JVM shutdown,
+garbage-collection, process-wide runtime, or thread/executor APIs. The only
+`Thread` access needed by the analyzer is reading the current thread's interrupt
+status without clearing it; do not create, start, stop, sleep, or mutate threads.
+Do not write to standard streams or add source strings/markers that identify the
+protected tests, benchmarks, flags, packages, or fixture content.
+
+The policy applies only to submitted `Analyzer.java`; it does not restrict your
+external profiler, debugger, IDE, shell, or AI assistant. Passing the audit is not
+proof of harmlessness. Keep the code straightforward enough for the interviewer
+to understand from the diff.
+
+Keep the file valid UTF-8 and under 256 KiB, retain its package and sole public
+top-level `Analyzer` class, and put any helpers inside that class. Static/wildcard
+imports, native methods, raw Java Unicode-escape spellings (`backslash-u`), and
+annotations other than `@Override`/`@SuppressWarnings` are rejected. The supplied
+baseline already follows these mechanical rules.
 
 ## Suggested workflow
 
-1. Run `make check`, `make benchmark`, and `make profile-jfr` (or another profiler).
-2. Inspect the profile and source before selecting an optimization.
-3. Edit only the permitted deliverable or deliverables.
-4. Rerun correctness and the directional local benchmark.
-5. If submitting notes, replace `OPTIMIZATION.md` with 5–10 concise bullets. Include
-   `Profile evidence:` with the real command/tool and observed hotspot.
-6. Inspect `git diff --name-only` and record the candidate commit SHA before time.
+1. Read `README.md`, this file, and the relevant invariants in `PRD.md` and
+   `DESIGN.md`. Give `AGENTS.md` to your AI assistant.
+2. Establish a starting point:
+
+   ```sh
+   make check
+   make benchmark
+   make profile-cpu    # or make profile-alloc / another measured profiler
+   ```
+
+3. Inspect the observed hotspot and choose one or more reviewable improvements.
+4. Edit `Analyzer.java`, then rerun correctness and the relevant measurements.
+5. Replace `OPTIMIZATION.md` with 5–10 concise bullet lines. Include a non-empty
+   `Profile evidence:` bullet naming the command/tool and hotspot you actually
+   observed, plus the change, effects, correctness, trade-off, and verification.
+6. Inspect the complete diff, commit both deliverables, and record the commit SHA
+   before the timer ends.
+7. After the timer, push that exact SHA, open the pull request, and inspect CI.
 
 ## Scoring
 
-The authoritative evaluator runs the immutable baseline and candidate overlay on
-the same Java 21 runner. It compares medians for JMH average time (`ns/op`) and
-normalized allocation (`B/op`) across three scenarios, then computes a geometric
-mean for each metric.
+CI constructs a fresh tree from the immutable baseline and overlays only your two
+deliverables. It compares baseline and candidate in separate equivalently warmed
+JVM forks on the same runner for Balanced, HighCardinality, and MostlyFiltered.
 
-| Improvement | Reported optimization tier |
+`java-v3` scores two geometric-mean metrics:
+
+- execution time (`ns/op`); and
+- normalized allocation volume (`B/op`).
+
+| Improvement in one metric | Reported optimization tier |
 | --- | --- |
-| Less than 20% | Below target |
+| less than 20% | Below target |
 | 20%–49.99% | Middle |
 | 50%–74.99% | Senior |
 | 75% or more | Staff |
 
-At least one metric must improve by 20%. No metric geometric mean may regress by
-more than 20%, and no scenario/metric pair may regress by more than 30%.
-Correctness and scope/source gates remain mandatory. The tier describes this
-optimization result, not the candidate's seniority or hiring outcome.
+The overall numeric tier is the higher of the two. Passing performance requires
+at least 20% improvement in one metric, no more than 20% geometric-mean regression
+in the other, and no more than 30% regression in any scenario/metric pair.
+Correctness, scope, source-policy, or response-format failure always fails first.
 
-Local numbers are directional. JIT warm-up, GC, runner noise, and allocation
-sampling affect individual runs; the same-run private comparison is authoritative.
+Java allocation-event/object-count profiles are diagnostic in `java-v3`, not a
+third score, because they have not been established as equally reproducible
+`objects/op` measurements. CPU and allocation profiles are collected separately
+from scored samples.
+
+Local numbers are directional; CI is authoritative. If an aggregate is within
+two points of a tier boundary, the interviewer may rerun the exact same SHA once
+and use the lower inconsistent result. Numeric tiers label this optimization
+only. They are not your job level and cannot replace human review.
+
+For a release verified as active from the upstream default branch, CI creates a
+fresh randomized corpus for the assessment, uses the immutable baseline as the
+trusted oracle for complete-result verification, and then measures the candidate
+against the same corpus. The public corpus and its evidence do not replace the
+separate private evaluator or the interviewer debrief; both are pre-score gates
+maintained outside candidate scope.
+
+## Deliverables
+
+- A contract-preserving implementation change in
+  `src/main/java/com/streamlens/analyzer/Analyzer.java`.
+- A truthful 5–10 bullet `OPTIMIZATION.md`.
+- A pull request whose submitted head contains the SHA recorded before 30:00.

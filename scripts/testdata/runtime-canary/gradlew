@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+test "$#" -eq 5
+test "$1" = --offline
+test "$2" = --no-daemon
+test "$3" = --console=plain
+test "$4" = --stacktrace
+test "$5" = test
+if touch /workspace/host-write 2>/dev/null; then
+  echo 'read-only workspace canary failed' >&2
+  exit 41
+fi
+if touch /streamlens-root-write 2>/dev/null; then
+  echo 'read-only root canary failed' >&2
+  exit 42
+fi
+if command -v getent >/dev/null 2>&1 && getent ahostsv4 example.com >/dev/null 2>&1; then
+  echo 'network namespace canary failed' >&2
+  exit 43
+fi
+mkdir /tmp/runtime-canary
+printf 'restriction canary passed\n'

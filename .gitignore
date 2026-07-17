@@ -1,7 +1,10 @@
 .gradle/
 build/
-.bench/
+out/
+*.jfr
+*.hprof
+*.log
+.DS_Store
 .idea/
 *.iml
-*.jfr
-.DS_Store
+assessment-evidence/

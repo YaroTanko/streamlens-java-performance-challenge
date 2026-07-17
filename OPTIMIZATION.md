@@ -1,11 +1,15 @@
-# Optimization notes
+# Optimization Notes
 
-Replace this template only when submitting notes. Keep 5–10 concise Markdown
-bullets and report only measurements or observations you actually made.
+Replace this template with 5–10 concise bullet lines before opening your pull
+request. Keep the `Profile evidence:` label and name the command or tool plus a
+hotspot you actually observed. JFR, async-profiler, an IDE profiler, or another
+measured profiler is as valid as the provided targets.
 
-- Profile evidence: TODO — name the command or tool and the observed hotspot.
-- Approach: TODO — explain the implementation or algorithm change.
-- Expected effect: TODO — identify CPU or allocation costs affected.
-- Correctness: TODO — explain why observable behavior remains unchanged.
-- Trade-off: TODO — describe complexity, memory, or maintenance implications.
-- Verification: TODO — list the correctness and benchmark commands you ran.
+- Profile evidence:
+- Bottleneck:
+- Change:
+- CPU effect:
+- Allocation effect:
+- Correctness:
+- Trade-off:
+- Verification:
