@@ -5,12 +5,12 @@
 > from the upstream protected default branch. A candidate branch or immutable
 > baseline tag is a snapshot and never establishes live release state.
 
-## Current protected upstream default branch — `java-v6` staged activation
+## Current protected upstream default branch — `java-v6` active
 
-This trusted activation change pins the production scorer and records the
-completed release gates below. It deliberately remains **staged** until the
-post-activation pull-request route is exercised successfully against the same
-candidate SHA. Do not start a scored session from this intermediate revision.
+This trusted release pins the production scorer and records the completed gates
+below. The post-activation pull-request route passed for the exact candidate
+recorded here, so `java-v6` is active and candidate sessions may be scored from
+this protected upstream default branch.
 
 ### Immutable candidate baseline (**B**)
 
@@ -56,15 +56,29 @@ activates a release.
   `sha256:9d8873e5ae72bfb2fd64ec2c73311be029c649bd99ca9ff85f9c24b6eb13bf98`.
   It passed every gate with aggregate `+46.96% ns/op` and `+28.06% B/op`
   (reported level: Middle).
+- Public post-activation PR-route scorer: trusted upstream workflow commit
+  `e38e3bad68be4d8e1976698b3b6e6b6fc05d493b`, candidate PR
+  [#6](https://github.com/YaroTanko/streamlens-java-performance-challenge/pull/6),
+  run
+  [`29613812931`](https://github.com/YaroTanko/streamlens-java-performance-challenge/actions/runs/29613812931),
+  candidate `878ece6bc85ae0fc67d2cc8c98910523cbf28a60`, public artifact
+  `8419977517`,
+  `sha256:ad7c46ff19d9d928639629ff075c8dcf8be96c29d71367ded91fb4b4f3fe39a7`.
+  It passed every gate with aggregate `+49.14% ns/op` and `+29.14% B/op`
+  (reported level: Middle).
 
-### Remaining activation gate
+### Post-activation pull-request route
 
-The same candidate will be opened as a **draft** pull request before this
-trusted activation branch is merged. After the trusted branch reaches `main`,
-that candidate pull request must be marked ready and pass the real
-`pull_request_target` route. Its code is evidence only and must never be merged
-into `main`; a final trusted ledger update will mark `java-v6` active only after
-that route is green.
+The governing scorer evidence is the real `pull_request_target` route above,
+executed after activation from the protected upstream default branch. Candidate
+PR #6 is score evidence only and must never be merged into `main`; it will be
+closed after this ledger update is merged.
+
+The failed workflow run on activation PR #7,
+[`29613749405`](https://github.com/YaroTanko/streamlens-java-performance-challenge/actions/runs/29613749405),
+is expected and is not candidate evidence: `pull_request_target` read the
+workflow from that PR's pre-activation base, whose pins were deliberately
+`PENDING`. The successful run `29613812931` is the governing live-v6 evidence.
 
 ## Historical labels
 
