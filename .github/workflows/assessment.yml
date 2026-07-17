@@ -1,0 +1,265 @@
+name: StreamLens Java assessment
+
+on:
+  # pull_request_target is intentional: this workflow definition and every
+  # host-side command come from the trusted base branch. Candidate Git data is
+  # inspected as data and Analyzer executes only in the restricted container.
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      candidate_repository:
+        description: Public owner/repository containing the candidate commit
+        required: true
+        type: string
+      candidate_sha:
+        description: Full candidate commit SHA descended from baseline-v2
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  ASSESSMENT_VERSION: java-v2
+  # Release gate: replace both explicit PENDING values only after baseline-v2
+  # and the complete exact-image canary evidence have been reviewed.
+  ASSESSMENT_BASELINE_SHA: PENDING_BASELINE_V2_SHA
+  ASSESSMENT_DOCKER_IMAGE: PENDING_JAVA_V2_IMAGE_DIGEST
+  BENCH_SAMPLES: '7'
+  PROFILE_SCENARIO: Balanced
+  PROFILE_TIME: 2s
+  CANDIDATE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name || inputs.candidate_repository }}
+  CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || inputs.candidate_sha }}
+  EVIDENCE_PARENT: ${{ github.workspace }}/assessment-evidence
+
+concurrency:
+  group: streamlens-java-v2-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  assess:
+    name: Correctness and public performance evidence
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Create private evidence directory and validate release pins
+        id: pins
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -m 0700 "$EVIDENCE_PARENT"
+          {
+            printf 'assessment_version=%s\n' "$ASSESSMENT_VERSION"
+            printf 'assessment_baseline=%s\n' "$ASSESSMENT_BASELINE_SHA"
+            printf 'assessment_image=%s\n' "$ASSESSMENT_DOCKER_IMAGE"
+            printf 'candidate_repository=%s\n' "$CANDIDATE_REPOSITORY"
+            printf 'candidate=%s\n' "$CANDIDATE_SHA"
+            printf 'trusted_workflow=%s\n' "$GITHUB_SHA"
+          } >"$EVIDENCE_PARENT/workflow-context.txt"
+          if [[ ! "$ASSESSMENT_BASELINE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'java-v2 is pending: immutable baseline SHA is not pinned.' >&2
+            exit 2
+          fi
+          if [[ ! "$ASSESSMENT_DOCKER_IMAGE" =~ ^[A-Za-z0-9][A-Za-z0-9._/:-]*@sha256:[0-9a-f]{64}$ ]]; then
+            echo 'java-v2 is pending: exact assessment image digest is not pinned.' >&2
+            exit 2
+          fi
+          if [[ ! "$CANDIDATE_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ \
+                || ! "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'candidate repository or SHA is malformed.' >&2
+            exit 2
+          fi
+
+      - name: Check out immutable baseline-v2
+        if: steps.pins.outcome == 'success'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ env.ASSESSMENT_BASELINE_SHA }}
+          path: baseline
+          fetch-depth: 0
+          fetch-tags: false
+          persist-credentials: false
+          submodules: false
+          lfs: false
+
+      - name: Check out exact candidate revision as untrusted data
+        if: steps.pins.outcome == 'success'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: ${{ env.CANDIDATE_REPOSITORY }}
+          ref: ${{ env.CANDIDATE_SHA }}
+          path: candidate
+          fetch-depth: 0
+          fetch-tags: false
+          persist-credentials: false
+          submodules: false
+          lfs: false
+          allow-unsafe-pr-checkout: true
+
+      - name: Set up pinned action implementation for trusted Java tools
+        if: steps.pins.outcome == 'success'
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          check-latest: false
+
+      - name: Verify fresh exact revisions and ancestry
+        id: revisions
+        if: steps.pins.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          trusted_git() {
+            GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+              GIT_NO_REPLACE_OBJECTS=1 GIT_OPTIONAL_LOCKS=0 GIT_TERMINAL_PROMPT=0 \
+              git -c core.fsmonitor=false -c core.hooksPath=/dev/null "$@"
+          }
+          baseline_actual=$(trusted_git -C baseline rev-parse --verify 'HEAD^{commit}')
+          candidate_actual=$(trusted_git -C candidate rev-parse --verify 'HEAD^{commit}')
+          [[ "$baseline_actual" == "$ASSESSMENT_BASELINE_SHA" ]] || {
+            echo "baseline checkout mismatch: $baseline_actual" >&2
+            exit 2
+          }
+          [[ "$candidate_actual" == "$CANDIDATE_SHA" ]] || {
+            echo "candidate checkout mismatch: $candidate_actual" >&2
+            exit 2
+          }
+          [[ ! -e baseline/.git/shallow && ! -e candidate/.git/shallow ]] || {
+            echo 'assessment requires full fresh non-shallow checkouts' >&2
+            exit 2
+          }
+          [[ -z $(trusted_git -C baseline for-each-ref --format='%(refname)' refs/replace) \
+             && -z $(trusted_git -C candidate for-each-ref --format='%(refname)' refs/replace) ]] || {
+            echo 'replacement refs are forbidden' >&2
+            exit 2
+          }
+          trusted_git -C candidate cat-file -e "$ASSESSMENT_BASELINE_SHA^{commit}"
+          trusted_git -C candidate merge-base --is-ancestor \
+            "$ASSESSMENT_BASELINE_SHA" "$CANDIDATE_SHA" || {
+            echo 'candidate is not descended from immutable baseline-v2' >&2
+            exit 1
+          }
+
+      - name: Run trusted source/scope preflight
+        id: preflight
+        if: steps.revisions.outcome == 'success'
+        continue-on-error: true
+        working-directory: candidate
+        run: |
+          set +e
+          env -u BASH_ENV -u ENV bash --noprofile --norc \
+            "$GITHUB_WORKSPACE/baseline/scripts/check-protected.sh" \
+            "$ASSESSMENT_BASELINE_SHA" "$CANDIDATE_SHA" \
+            >"$EVIDENCE_PARENT/candidate-preflight.txt" 2>&1
+          status=$?
+          set -e
+          cat "$EVIDENCE_PARENT/candidate-preflight.txt"
+          exit "$status"
+
+      - name: Pull pinned runtime image
+        id: image
+        if: steps.preflight.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set +e
+          docker pull "$ASSESSMENT_DOCKER_IMAGE" \
+            >"$EVIDENCE_PARENT/docker-pull.log" 2>&1
+          status=$?
+          set -e
+          cat "$EVIDENCE_PARENT/docker-pull.log"
+          exit "$status"
+
+      - name: Run complete exact-image real-runtime canary
+        id: canary
+        if: steps.image.outcome == 'success'
+        continue-on-error: true
+        working-directory: baseline
+        run: |
+          set +e
+          REQUIRE_DOCKER_RUNTIME=1 \
+            bash --noprofile --norc scripts/isolation-test.sh \
+            >"$EVIDENCE_PARENT/exact-image-canary.txt" 2>&1
+          status=$?
+          set -e
+          cat "$EVIDENCE_PARENT/exact-image-canary.txt"
+          exit "$status"
+
+      - name: Refresh exact image before candidate execution
+        id: refresh
+        if: steps.canary.outcome == 'success'
+        continue-on-error: true
+        run: docker pull "$ASSESSMENT_DOCKER_IMAGE" >"$EVIDENCE_PARENT/docker-refresh.log" 2>&1
+
+      - name: Run baseline-owned unified Java v2 assessor
+        id: assessor
+        if: steps.refresh.outcome == 'success'
+        continue-on-error: true
+        working-directory: baseline
+        run: |
+          set +e
+          env -u BASH_ENV -u ENV \
+            bash --noprofile --norc scripts/assess.sh \
+            "$GITHUB_WORKSPACE/baseline" \
+            "$GITHUB_WORKSPACE/candidate" \
+            "$ASSESSMENT_BASELINE_SHA" \
+            "$ASSESSMENT_BASELINE_SHA" \
+            "$CANDIDATE_SHA" \
+            "$EVIDENCE_PARENT/assessment" \
+            >"$EVIDENCE_PARENT/assessor.txt" 2>&1
+          status=$?
+          set -e
+          printf '%s\n' "$status" >"$EVIDENCE_PARENT/assessor-exit-code.txt"
+          cat "$EVIDENCE_PARENT/assessor.txt"
+          exit "$status"
+
+      - name: Write assessment summary
+        if: always()
+        run: |
+          {
+            echo '# StreamLens Java v2 assessment'
+            echo
+            echo "- Release pins: ${{ steps.pins.outcome }}"
+            echo "- Revision/ancestry check: ${{ steps.revisions.outcome }}"
+            echo "- Candidate source/scope: ${{ steps.preflight.outcome }}"
+            echo "- Exact image pull: ${{ steps.image.outcome }}"
+            echo "- Complete real-runtime canary: ${{ steps.canary.outcome }}"
+            echo "- Image refresh: ${{ steps.refresh.outcome }}"
+            echo "- Public assessor: ${{ steps.assessor.outcome }}"
+            echo
+            report="$EVIDENCE_PARENT/assessment/benchmarks/report.md"
+            if [[ -f "$report" && ! -L "$report" ]]; then
+              cat "$report"
+            else
+              echo 'No benchmark report was produced.'
+            fi
+            echo
+            echo '> Public randomized trusted-corpus performance evidence is necessary but not sufficient; the private hidden-contract evaluator and human debrief remain authoritative release gates.'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Retain complete public evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: streamlens-java-v2-${{ github.run_id }}
+          path: assessment-evidence/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+      - name: Enforce assessment result
+        if: always()
+        run: |
+          set -euo pipefail
+          [[ '${{ steps.pins.outcome }}' == success \
+             && '${{ steps.revisions.outcome }}' == success \
+             && '${{ steps.preflight.outcome }}' == success \
+             && '${{ steps.image.outcome }}' == success \
+             && '${{ steps.canary.outcome }}' == success \
+             && '${{ steps.refresh.outcome }}' == success \
+             && '${{ steps.assessor.outcome }}' == success ]] || exit 1
