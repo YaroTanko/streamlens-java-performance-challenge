@@ -23,12 +23,12 @@ permissions:
 
 env:
   ASSESSMENT_VERSION: java-v6
-  # The immutable candidate snapshot intentionally retains PENDING values. A
-  # later protected default-branch activation commit pins baseline-v6 and the
-  # exact image after reviewed canary/calibration evidence; candidates must not
-  # copy that activation commit into their B..candidate submission branch.
-  ASSESSMENT_BASELINE_SHA: PENDING_BASELINE_V6_SHA
-  ASSESSMENT_DOCKER_IMAGE: PENDING_JAVA_V6_IMAGE_DIGEST
+  # baseline-v6 remains the immutable candidate snapshot (B). This trusted
+  # activation branch pins B and I after reviewed runtime/calibration/private
+  # evidence; candidate submissions must remain B..candidate and never copy
+  # this activation commit.
+  ASSESSMENT_BASELINE_SHA: 82f3c24c7cf344a25d6486f933c26e83dbb01122
+  ASSESSMENT_DOCKER_IMAGE: ghcr.io/yarotanko/streamlens-java-assessment@sha256:359fa35b58fc7b2f1bd90ac27bb422995aebfe08305e9fdff36c6e6f5b064c48
   BENCH_SAMPLES: '7'
   PROFILE_SCENARIO: Balanced
   PROFILE_TIME: 2s
