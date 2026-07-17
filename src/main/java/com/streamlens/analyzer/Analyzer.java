@@ -21,6 +21,7 @@ import java.util.List;
 
 /** StreamLens event analyzer. */
 public final class Analyzer {
+    // End-to-end implementation-only workflow canary; behavior is unchanged.
     private static final BigInteger NANOS_PER_SECOND = BigInteger.valueOf(1_000_000_000L);
     private static final long ZERO_TIME_EPOCH_SECONDS = -62_135_596_800L;
 
