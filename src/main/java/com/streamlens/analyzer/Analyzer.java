@@ -88,7 +88,7 @@ public final class Analyzer {
         for (Aggregate aggregate : aggregates.values()) {
             checkInterrupted();
             List<TopUser> allUsers = new ArrayList<>(aggregate.users.size());
-            for (UserTotal user : aggregate.users) {
+            for (UserTotal user : aggregate.users.values()) {
                 allUsers.add(new TopUser(user.userId, user.value));
             }
             allUsers.sort((left, right) -> {
@@ -243,17 +243,10 @@ public final class Analyzer {
             aggregates.put(key, aggregate);
         }
 
-        int userIndex = -1;
-        for (int index = 0; index < aggregate.users.size(); index++) {
-            if (aggregate.users.get(index).userId.equals(event.userId)) {
-                userIndex = index;
-                break;
-            }
-        }
-
+        UserTotal user = aggregate.users.get(event.userId);
         double nextUserSum = event.value;
-        if (userIndex >= 0) {
-            nextUserSum = aggregate.users.get(userIndex).value + event.value;
+        if (user != null) {
+            nextUserSum = user.value + event.value;
             if (Double.isInfinite(nextUserSum)) {
                 throw new AnalysisException(
                         "line " + event.lineNumber
@@ -271,10 +264,10 @@ public final class Analyzer {
 
         aggregate.count++;
         aggregate.sum = nextGroupSum;
-        if (userIndex < 0) {
-            aggregate.users.add(new UserTotal(event.userId, event.value));
+        if (user == null) {
+            aggregate.users.put(event.userId, new UserTotal(event.userId, event.value));
         } else {
-            aggregate.users.get(userIndex).value = nextUserSum;
+            user.value = nextUserSum;
         }
     }
 
@@ -369,7 +362,7 @@ public final class Analyzer {
         private final Instant windowStart;
         private final String tenantId;
         private final String type;
-        private final List<UserTotal> users = new ArrayList<>();
+        private final Map<String, UserTotal> users = new HashMap<>();
         private long count;
         private double sum;
 
