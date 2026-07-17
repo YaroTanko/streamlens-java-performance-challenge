@@ -59,6 +59,18 @@ grep -Fqx -- '- Profile evidence: fixture.' "$prepared/OPTIMIZATION.md"
   echo 'prepare-candidate-test: committed executable mode was not preserved' >&2
   exit 1
 }
+if find "$prepared" -type d ! -perm -0001 -print -quit | grep -q .; then
+  echo 'prepare-candidate-test: runtime cannot traverse the prepared source tree' >&2
+  exit 1
+fi
+if find "$prepared" -type f ! -perm -0004 -print -quit | grep -q .; then
+  echo 'prepare-candidate-test: runtime cannot read the prepared source tree' >&2
+  exit 1
+fi
+if find "$prepared" -perm -0022 -print -quit | grep -q .; then
+  echo 'prepare-candidate-test: prepared source tree is group- or world-writable' >&2
+  exit 1
+fi
 
 if bash "$root/scripts/prepare-candidate.sh" \
     "$baseline" "$candidate" "$candidate_commit" "$output_parent/prepared" \

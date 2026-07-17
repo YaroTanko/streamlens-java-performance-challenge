@@ -13,7 +13,7 @@ token_b=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 fixture_seed=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 fixture_digest=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 fixture_mac=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-fixture_expected="streamlens-java-oracle-v4:$fixture_seed:$fixture_digest:$fixture_digest:$fixture_digest:$fixture_mac"
+fixture_expected="streamlens-java-oracle-v5:$fixture_seed:$fixture_digest:$fixture_digest:$fixture_digest:$fixture_mac"
 
 write_samples() {
   local path=$1 token=$2 time=$3 bytes=$4 count=${5:-5} result_token=${6:-$2}

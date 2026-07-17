@@ -7,7 +7,7 @@ the resulting image by digest, offline, with no network and a read-only root.
 
 ## Snapshot and live activation records
 
-`baseline-v4` is the immutable candidate snapshot (**B**), not an activation
+`baseline-v5` is the immutable candidate snapshot (**B**), not an activation
 record. Its pre-activation status prose and runner `PENDING` values are frozen
 with the candidate tree and intentionally remain non-authoritative after a later
 protected activation commit (**A**). Current activation status and exact pins are
@@ -15,10 +15,10 @@ authoritative only in `RELEASES.md` and the trusted assessment workflow on the
 upstream protected default branch. Candidate branches stay based on B and must
 not merge, rebase, or update from that branch; scope is checked as `B..candidate`.
 
-The live `java-v4` release is eligible only when all of these facts are committed
+The live `java-v5` release is eligible only when all of these facts are committed
 to the protected-default-branch release record:
 
-1. an immutable baseline commit and `baseline-v4` tag;
+1. an immutable baseline commit and `baseline-v5` tag;
 2. an exact `ghcr.io/...@sha256:<64-hex>` assessment image in the workflow;
 3. a successful real-runtime canary using that exact image and baseline;
 4. a workflow pin to the immutable baseline commit;
@@ -26,7 +26,7 @@ to the protected-default-branch release record:
 6. a pinned, reviewed private-evaluator pre-score gate.
 
 The manual `build-assessment-image.yml` workflow accepts the full baseline SHA
-and Temurin base digest, verifies that the SHA is exactly `baseline-v4`, builds
+and Temurin base digest, verifies that the SHA is exactly `baseline-v5`, builds
 and pushes from that tree, then runs the complete exact-image canary. It retains
 the canary evidence and prints the immutable runtime digest. The reviewed SHA
 and digest must still be pinned in the trusted PR workflow. A tag alone is never

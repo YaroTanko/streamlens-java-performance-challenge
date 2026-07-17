@@ -5,7 +5,7 @@ Read `TASK.md` before starting; candidate scope is intentionally narrow.
 
 Read current activation status and pins only from `RELEASES.md` and the trusted
 assessment workflow on the upstream protected default branch. The immutable
-`baseline-v4` tag and candidate branches are snapshots: their status text and
+`baseline-v5` tag and candidate branches are snapshots: their status text and
 intentionally `PENDING` runner values are historical and non-authoritative after
 activation. Maintainers must not schedule a scored session until the live release
 record shows the baseline/image pins, real Docker-runtime canary, calibration,
@@ -22,11 +22,11 @@ private-evaluator pre-score review, and other acceptance evidence in `PRD.md`.
    cd streamlens-java-performance-challenge
    git remote add upstream <upstream-url>
    git fetch upstream --tags
-   git switch --detach baseline-v4
+   git switch --detach baseline-v5
    git switch -c optimize-analyzer
    ```
 
-   `baseline-v4` is the immutable candidate snapshot (**B**). Do not merge,
+   `baseline-v5` is the immutable candidate snapshot (**B**). Do not merge,
    rebase, or otherwise update `optimize-analyzer` from the upstream default
    branch after this point. That branch can later contain a protected activation
    commit (**A**) and other files outside candidate scope; CI evaluates the exact
@@ -93,7 +93,7 @@ the two allowed regular files changed, and type-checks `Analyzer.java` against t
 safe allow-list. It then creates a fresh tree from the immutable baseline and
 overlays only those files. Candidate tests, build files, scripts, workflows,
 generated files, symlinks, and submodules are not executed. The scope comparison
-is `baseline-v4..candidate`; a candidate branch must not bring in an upstream
+is `baseline-v5..candidate`; a candidate branch must not bring in an upstream
 default-branch activation update.
 
 Fixed correctness and JMH commands run in the release's digest-pinned restricted

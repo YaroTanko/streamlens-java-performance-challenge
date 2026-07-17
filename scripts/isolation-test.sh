@@ -9,7 +9,11 @@ configured_image=${ASSESSMENT_DOCKER_IMAGE:-}
 construction_image=${configured_image:-example.invalid/streamlens-java@sha256:0000000000000000000000000000000000000000000000000000000000000000}
 require_runtime=${REQUIRE_DOCKER_RUNTIME:-0}
 temporary=$(mktemp -d "${TMPDIR:-/tmp}/streamlens-java-isolation-test.XXXXXX")
-trap 'rm -rf -- "$temporary"' EXIT HUP INT TERM
+runtime_parent=$(mktemp -d "${TMPDIR:-/tmp}/streamlens-java-runtime-canary.XXXXXX")
+# This directory contains only a Git-archived public source snapshot and is
+# deliberately traversable (but not writable) by the fixed container UID.
+chmod 0755 "$runtime_parent"
+trap 'rm -rf -- "$temporary" "$runtime_parent"' EXIT HUP INT TERM
 
 fail() {
   echo "isolation-test: $*" >&2
@@ -114,7 +118,7 @@ expected_cid=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 fake_fixture_seed=1111111111111111111111111111111111111111111111111111111111111111
 fake_fixture_key=2222222222222222222222222222222222222222222222222222222222222222
 fake_fixture_digest=3333333333333333333333333333333333333333333333333333333333333333
-fake_fixture_expected="streamlens-java-oracle-v4:$fake_fixture_seed:$fake_fixture_digest:$fake_fixture_digest:$fake_fixture_digest:$fake_fixture_digest"
+fake_fixture_expected="streamlens-java-oracle-v5:$fake_fixture_seed:$fake_fixture_digest:$fake_fixture_digest:$fake_fixture_digest:$fake_fixture_digest"
 
 run_fake() {
   local mode=$1 cleanup=$2 deadline=$3 cap=$4
@@ -224,6 +228,16 @@ docker info >/dev/null 2>&1 || runtime_unavailable 'docker daemon is unavailable
 docker image inspect "$configured_image" >/dev/null 2>&1 \
   || runtime_unavailable "pinned image is not present: $configured_image"
 
+baseline_commit=$(git -C "$root" rev-parse --verify 'HEAD^{commit}' 2>/dev/null || true)
+[[ $baseline_commit =~ ^[0-9a-f]{40}$ ]] \
+  || fail 'real runtime canary requires a committed baseline checkout'
+runtime_tree="$runtime_parent/prepared-baseline"
+env -u BASH_ENV -u ENV bash --noprofile --norc \
+  "$root/scripts/prepare-candidate.sh" "$root" "$root" "$baseline_commit" "$runtime_tree" \
+  >/dev/null || fail 'could not materialize the baseline-owned runtime source tree'
+[[ ! -e $runtime_tree/release-evidence ]] \
+  || fail 'runtime source tree unexpectedly includes release evidence'
+
 restriction_output=$(ASSESSMENT_DOCKER_IMAGE="$configured_image" \
   bash "$runner" "$fixture" test 2>&1) \
   || fail "real restriction canary failed: $restriction_output"
@@ -231,7 +245,7 @@ restriction_output=$(ASSESSMENT_DOCKER_IMAGE="$configured_image" \
   || fail 'real restriction canary did not prove read-only/no-network execution'
 
 functional_output=$(ASSESSMENT_DOCKER_IMAGE="$configured_image" \
-  bash "$runner" "$root" test 2>&1) \
+  bash "$runner" "$runtime_tree" test 2>&1) \
   || fail "real baseline functional canary failed: $functional_output"
 
 runtime_fixture_seed=$(LC_ALL=C od -An -N32 -tx1 /dev/urandom | tr -d '[:space:]')
@@ -239,19 +253,19 @@ runtime_fixture_key=$(LC_ALL=C od -An -N32 -tx1 /dev/urandom | tr -d '[:space:]'
 runtime_oracle_token=$(LC_ALL=C od -An -N32 -tx1 /dev/urandom | tr -d '[:space:]')
 oracle_output=$(ASSESSMENT_FIXTURE_SEED="$runtime_fixture_seed" ASSESSMENT_FIXTURE_AUTH_KEY="$runtime_fixture_key" \
   ORACLE_RESULT_TOKEN="$runtime_oracle_token" ASSESSMENT_DOCKER_IMAGE="$configured_image" \
-  bash "$runner" "$root" oracle 2>&1) \
+  bash "$runner" "$runtime_tree" oracle 2>&1) \
   || fail "real randomized oracle canary failed: $oracle_output"
 oracle_prefix="@@STREAMLENS_JAVA_ORACLE_RESULT $runtime_oracle_token "
 [[ $(grep -Fc "$oracle_prefix" <<<"$oracle_output" || true) == 1 ]] \
   || fail 'real oracle canary produced no authenticated result'
 runtime_fixture_expected=$(sed -n "s/^$oracle_prefix//p" <<<"$oracle_output")
-[[ $runtime_fixture_expected =~ ^streamlens-java-oracle-v4:${runtime_fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
+[[ $runtime_fixture_expected =~ ^streamlens-java-oracle-v5:${runtime_fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
   || fail 'real oracle canary record was malformed'
 
 benchmark_output=$(ASSESSMENT_FIXTURE_SEED="$runtime_fixture_seed" \
   ASSESSMENT_FIXTURE_EXPECTED="$runtime_fixture_expected" ASSESSMENT_FIXTURE_AUTH_KEY="$runtime_fixture_key" \
   ASSESSMENT_DOCKER_IMAGE="$configured_image" \
-  bash "$runner" "$root" benchmark 2>&1) \
+  bash "$runner" "$runtime_tree" benchmark 2>&1) \
   || fail "real baseline benchmark canary failed: $benchmark_output"
 grep -Eq '^@@STREAMLENS_JAVA_BENCHMARK_RESULT [0-9a-f]{64}$' <<<"$benchmark_output" \
   || fail 'real benchmark canary produced no authenticated result'
@@ -260,7 +274,7 @@ for kind in cpu alloc; do
   profile_output=$(ASSESSMENT_FIXTURE_SEED="$runtime_fixture_seed" \
     ASSESSMENT_FIXTURE_EXPECTED="$runtime_fixture_expected" ASSESSMENT_FIXTURE_AUTH_KEY="$runtime_fixture_key" \
     ASSESSMENT_DOCKER_IMAGE="$configured_image" \
-    bash "$runner" "$root" profile "$kind" Balanced 1s "$runtime_profile" 2>&1) \
+    bash "$runner" "$runtime_tree" profile "$kind" Balanced 1s "$runtime_profile" 2>&1) \
     || fail "real baseline $kind profile canary failed: $profile_output"
   for artifact in recording.jfr summary.txt hotspots.txt jmh.txt; do
     [[ -s $runtime_profile/$artifact && ! -L $runtime_profile/$artifact ]] \

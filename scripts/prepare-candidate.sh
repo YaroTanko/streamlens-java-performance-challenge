@@ -103,4 +103,21 @@ install -m 0644 "$work/Analyzer.java" "$work/tree/$analyzer"
 install -m 0644 "$work/OPTIMIZATION.md" "$work/tree/$notes"
 
 mv "$work/tree" "$output"
+# The exact synthetic tree is public candidate/baseline source, never evidence.
+# It is mounted read-only into a fixed non-root runtime UID, so retain neither
+# group/other write access nor host-only read/traversal permissions.
+find "$output" -type d -exec chmod 0755 {} +
+find "$output" -type f -exec chmod u+rw,go+r,go-w {} +
+if find "$output" -type l -print -quit | grep -q .; then
+  die 'prepared synthetic tree must not contain symbolic links'
+fi
+if find "$output" -type d ! -perm -0001 -print -quit | grep -q .; then
+  die 'prepared synthetic tree contains a directory inaccessible to the runtime UID'
+fi
+if find "$output" -type f ! -perm -0004 -print -quit | grep -q .; then
+  die 'prepared synthetic tree contains a file unreadable by the runtime UID'
+fi
+if find "$output" -perm -0022 -print -quit | grep -q .; then
+  die 'prepared synthetic tree must not be group- or world-writable'
+fi
 echo "Prepared baseline-owned assessment tree: $output"
