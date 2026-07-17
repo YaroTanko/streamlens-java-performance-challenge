@@ -38,7 +38,7 @@ Run the example application with:
 The public repository provides local correctness tests, JMH workloads, JFR
 profiling, and a read-only pull-request workflow. The authoritative interviewer
 evaluation runs separately in a private evaluator. It constructs a fresh tree
-from the immutable `baseline-v1` runtime and overlays only the two candidate
+from the immutable `baseline-v2` runtime and overlays only the two candidate
 deliverables. Candidate tests, build files, scripts, and workflows are neither
 copied nor executed.
 

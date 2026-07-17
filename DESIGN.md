@@ -44,7 +44,7 @@ records, CLI, tests, benchmark source, Gradle metadata, and scripts are protecte
 ## Assessment construction
 
 ```text
-baseline-v1 runtime + exact candidate Analyzer.java + exact candidate notes
+baseline-v2 runtime + exact candidate Analyzer.java + exact candidate notes
   -> input/scope/source/notes gates
   -> protected JUnit correctness
   -> alternating protected JMH samples

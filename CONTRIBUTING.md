@@ -3,7 +3,7 @@
 Candidate pull requests must follow [TASK.md](TASK.md) and change at least one of
 the two permitted deliverables. Maintainer changes to the contract, dependencies,
 tests, workloads, runner, or source policy require a new immutable assessment
-version rather than moving `baseline-v1` or `starter-v1`.
+version rather than moving `baseline-v2` or `starter-v2`.
 
 Before a maintainer release:
 

@@ -1,6 +1,6 @@
 # StreamLens Java Performance Challenge — Product Requirements
 
-**Status:** Approved for assessment version 1
+**Status:** Approved for assessment version 2
 
 **Runtime:** Java 21
 
@@ -14,7 +14,7 @@ AI-assisted Java performance exercise. Its starter must be correct and plausibly
 inefficient, with independent opportunities in parsing, lookup, allocation, and
 top-K selection.
 
-The immutable `baseline-v1` package defines the runtime, tests, workloads,
+The immutable `baseline-v2` package defines the runtime, tests, workloads,
 dependencies, and starter implementation. The starter workflow pins the full
 baseline commit SHA; the human-readable tag is not a moving source of truth.
 
@@ -111,7 +111,7 @@ Candidate `Analyzer.java` may import its `JsonFactory`, `JsonParser`, and
 `JsonToken`, ordinary reader/error classes from the documented `java.io` subset,
 and `java.math`, `java.time`, or `java.util` APIs.
 
-The active version-1 guard rejects filesystem, network, process, native,
+The active version-2 guard rejects filesystem, network, process, native,
 reflection/method-handle, class-loading, security, concurrent executor,
 management, JFR/diagnostic/internal-JDK, direct-output, JVM-global, and protected
 benchmark-recognition APIs. Static imports and Java Unicode escapes are rejected.
