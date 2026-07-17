@@ -2,7 +2,7 @@
 
 > **Release-state authority:** Only `RELEASES.md` and the trusted assessment
 > workflow on the upstream protected default branch establish current activation
-> status and pins. The immutable `baseline-v5` tag and a candidate checkout are
+> status and pins. The immutable `baseline-v6` tag and a candidate checkout are
 > snapshots; their release wording and intentionally `PENDING` runner values are
 > historical and non-authoritative after activation. Do not start or score a
 > session until the live release record identifies the baseline/image pins,
@@ -22,9 +22,9 @@ pull request, CI queue/runtime, and reading the report are untimed. Do not alter
 the submitted implementation or notes after recording the SHA.
 
 For a release the interviewer has verified as active from the upstream default
-branch, start from the immutable `baseline-v5` commit identified there. Do not
+branch, start from the immutable `baseline-v6` commit identified there. Do not
 merge, rebase, or otherwise update the candidate branch from the upstream default
-branch after starting it. CI checks `baseline-v5..candidate`, so activation
+branch after starting it. CI checks `baseline-v6..candidate`, so activation
 metadata and any other upstream change make the submission out of scope.
 
 ## Allowed changes
@@ -108,7 +108,7 @@ CI constructs a fresh tree from the immutable baseline and overlays only your tw
 deliverables. It compares baseline and candidate in separate equivalently warmed
 JVM forks on the same runner for Balanced, HighCardinality, and MostlyFiltered.
 
-`java-v5` scores two geometric-mean metrics:
+`java-v6` scores two geometric-mean metrics:
 
 - execution time (`ns/op`); and
 - normalized allocation volume (`B/op`).
@@ -125,7 +125,7 @@ at least 20% improvement in one metric, no more than 20% geometric-mean regressi
 in the other, and no more than 30% regression in any scenario/metric pair.
 Correctness, scope, source-policy, or response-format failure always fails first.
 
-Java allocation-event/object-count profiles are diagnostic in `java-v5`, not a
+Java allocation-event/object-count profiles are diagnostic in `java-v6`, not a
 third score, because they have not been established as equally reproducible
 `objects/op` measurements. CPU and allocation profiles are collected separately
 from scored samples.

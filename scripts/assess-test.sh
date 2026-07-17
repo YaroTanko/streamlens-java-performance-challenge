@@ -53,7 +53,7 @@ case "$mode" in
     token=${ORACLE_RESULT_TOKEN:?}
     seed=${ASSESSMENT_FIXTURE_SEED:?}
     digest=0000000000000000000000000000000000000000000000000000000000000000
-    printf '@@STREAMLENS_JAVA_ORACLE_RESULT %s streamlens-java-oracle-v5:%s:%s:%s:%s:%s\n' \
+    printf '@@STREAMLENS_JAVA_ORACLE_RESULT %s streamlens-java-oracle-v6:%s:%s:%s:%s:%s\n' \
       "$token" "$seed" "$digest" "$digest" "$digest" "$digest"
     ;;
   benchmark)
@@ -120,7 +120,7 @@ assessment="$output_parent/assessment"
 grep -Fq 'Result: ✅ passed' "$assessment/benchmarks/report.md"
 grep -Fq 'Overall level: **Middle**' "$assessment/benchmarks/report.md"
 grep -Fqx 'functional=passed' "$assessment/assessment-status.txt"
-grep -Fq '"assessment_version": "java-v5"' \
+grep -Fq '"assessment_version": "java-v6"' \
   "$assessment/evidence/manifest-core.json"
 for kind in cpu alloc; do
   for artifact in recording.jfr summary.txt hotspots.txt jmh.txt; do

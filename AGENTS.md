@@ -11,9 +11,9 @@ profile result that was not measured.
 2. `TASK.md` defines candidate scope and scoring.
 3. `DESIGN.md` summarizes architecture and invariants.
 
-Read current `java-v5` activation status and pins only from `RELEASES.md` and the
+Read current `java-v6` activation status and pins only from `RELEASES.md` and the
 trusted assessment workflow on the upstream protected default branch. The
-immutable `baseline-v5` tag and candidate checkouts are snapshots: their
+immutable `baseline-v6` tag and candidate checkouts are snapshots: their
 pre-activation prose and intentionally `PENDING` runner values are historical and
 non-authoritative after activation. A live release may be called active only when
 maintainers publish the baseline/image pins, pass the documented real
@@ -32,10 +32,10 @@ other documentation, workflows, or additional implementation files. If a
 requested change needs a protected path, explain the conflict instead of making
 the change.
 
-Start from the immutable `baseline-v5` snapshot and do not merge, rebase, or
+Start from the immutable `baseline-v6` snapshot and do not merge, rebase, or
 update the candidate branch from the upstream default branch. That branch may
 contain later protected activation metadata; the scope guard compares
-`baseline-v5..candidate` and rejects every path other than the two above.
+`baseline-v6..candidate` and rejects every path other than the two above.
 
 ## Candidate source policy
 

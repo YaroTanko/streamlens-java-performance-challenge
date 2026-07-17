@@ -17,15 +17,15 @@ with the role's other interview evidence.
 Do not run a scored interview while the upstream protected default branch says
 **pending activation**. Read current status and pins only from that branch's
 `RELEASES.md` and trusted assessment workflow, never from the candidate branch or
-the immutable `baseline-v5` tag. Those snapshots intentionally retain their
+the immutable `baseline-v6` tag. Those snapshots intentionally retain their
 historical status prose and `PENDING` runner values after a later activation
 commit. Before scheduling, verify from current release evidence—not memory—that:
 
-- `baseline-v5` exists and its tag resolves to the workflow's full pinned SHA;
+- `baseline-v6` exists and its tag resolves to the workflow's full pinned SHA;
 - the workflow pins an immutable container digest;
 - the real-runtime canary passed using that exact digest;
 - retained calibration evidence and the required private-evaluator pre-score
-  review are available for `java-v5`;
+  review are available for `java-v6`;
 - the Java 21 patch version and documented commands match the release;
 - the branch is clean and contains no reference solution; and
 - a recent maintainer smoke run produced complete evidence artifacts.
@@ -37,7 +37,7 @@ candidate tier.
 
 1. Record candidate, interviewer, assessment version, baseline SHA, start branch,
    and environment in the scorecard. Confirm that the candidate branch starts from
-   the immutable `baseline-v5` snapshot (**B**), and that it has not merged,
+   the immutable `baseline-v6` snapshot (**B**), and that it has not merged,
    rebased, or updated from the upstream default branch. Its `B..candidate` diff
    must contain only `Analyzer.java` and `OPTIMIZATION.md`.
 2. Provide a clean checkout. Confirm `java -version` and `make check` can start.
