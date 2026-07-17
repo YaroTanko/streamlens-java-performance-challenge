@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       baseline_sha:
-        description: Full commit SHA referenced by the immutable baseline-v5 tag
+        description: Full commit SHA referenced by the immutable baseline-v6 tag
         required: true
         type: string
       temurin_base:
@@ -23,9 +23,8 @@ jobs:
     timeout-minutes: 60
     env:
       BASELINE_SHA: ${{ inputs.baseline_sha }}
-      BASELINE_TAG: baseline-v5
+      BASELINE_TAG: baseline-v6
       TEMURIN_BASE: ${{ inputs.temurin_base }}
-      RELEASE_EVIDENCE: ${{ runner.temp }}/streamlens-java-v5-release-evidence-${{ github.run_id }}
     steps:
       - name: Validate immutable input syntax
         run: |
@@ -57,13 +56,14 @@ jobs:
             exit 2
           fi
           umask 077
-          mkdir -m 0700 "$RELEASE_EVIDENCE"
+          release_evidence="$RUNNER_TEMP/streamlens-java-v6-release-evidence-$GITHUB_RUN_ID"
+          mkdir -m 0700 "$release_evidence"
           {
-            printf 'assessment_version=java-v5\n'
+            printf 'assessment_version=java-v6\n'
             printf 'baseline_tag=%s\n' "$BASELINE_TAG"
             printf 'baseline_sha=%s\n' "$BASELINE_SHA"
             printf 'temurin_base=%s\n' "$TEMURIN_BASE"
-          } >"$RELEASE_EVIDENCE/release-pins.txt"
+          } >"$release_evidence/release-pins.txt"
 
       - name: Build and push immutable runtime
         id: image
@@ -71,16 +71,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          release_evidence="$RUNNER_TEMP/streamlens-java-v6-release-evidence-$GITHUB_RUN_ID"
           owner=$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           image="ghcr.io/${owner}/streamlens-java-assessment"
-          tag="java-v5-${BASELINE_SHA}"
+          tag="java-v6-${BASELINE_SHA}"
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker build \
             --pull \
             --build-arg "TEMURIN_BASE=$TEMURIN_BASE" \
             --label "org.opencontainers.image.revision=$BASELINE_SHA" \
             --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
-            --label "com.streamlens.assessment.version=java-v5" \
+            --label "com.streamlens.assessment.version=java-v6" \
             --tag "$image:$tag" \
             --file assessment/Dockerfile .
           docker push "$image:$tag"
@@ -92,14 +93,15 @@ jobs:
             exit 2
           fi
           printf 'digest=%s\n' "$digest" >>"$GITHUB_OUTPUT"
-          printf 'assessment_image=%s\n' "$digest" >>"$RELEASE_EVIDENCE/release-pins.txt"
+          printf 'assessment_image=%s\n' "$digest" >>"$release_evidence/release-pins.txt"
 
       - name: Pull exact digest and run complete real-runtime canary
         env:
           ASSESSMENT_DOCKER_IMAGE: ${{ steps.image.outputs.digest }}
         run: |
           set -euo pipefail
-          docker pull "$ASSESSMENT_DOCKER_IMAGE" >"$RELEASE_EVIDENCE/docker-pull.log" 2>&1
+          release_evidence="$RUNNER_TEMP/streamlens-java-v6-release-evidence-$GITHUB_RUN_ID"
+          docker pull "$ASSESSMENT_DOCKER_IMAGE" >"$release_evidence/docker-pull.log" 2>&1
           expected_source="https://github.com/$GITHUB_REPOSITORY"
           actual_revision=$(docker image inspect --format \
             '{{ index .Config.Labels "org.opencontainers.image.revision" }}' \
@@ -111,7 +113,7 @@ jobs:
             '{{ index .Config.Labels "org.opencontainers.image.source" }}' \
             "$ASSESSMENT_DOCKER_IMAGE")
           [[ "$actual_revision" == "$BASELINE_SHA" \
-             && "$actual_version" == java-v5 \
+             && "$actual_version" == java-v6 \
              && "$actual_source" == "$expected_source" ]] || {
             echo 'exact image provenance labels do not match the release inputs' >&2
             exit 2
@@ -121,12 +123,12 @@ jobs:
             printf 'actual_revision=%s\n' "$actual_revision"
             printf 'actual_version=%s\n' "$actual_version"
             printf 'actual_source=%s\n' "$actual_source"
-          } >"$RELEASE_EVIDENCE/image-provenance.txt"
+          } >"$release_evidence/image-provenance.txt"
           REQUIRE_DOCKER_RUNTIME=1 bash --noprofile --norc scripts/isolation-test.sh \
-            >"$RELEASE_EVIDENCE/exact-image-canary.log" 2>&1
-          cat "$RELEASE_EVIDENCE/exact-image-canary.log"
+            >"$release_evidence/exact-image-canary.log" 2>&1
+          cat "$release_evidence/exact-image-canary.log"
           {
-            echo '# Java v5 assessment image canary passed'
+            echo '# Java v6 assessment image canary passed'
             echo
             echo "- Baseline tag: \`$BASELINE_TAG\`"
             echo "- Baseline SHA: \`$BASELINE_SHA\`"
@@ -137,11 +139,29 @@ jobs:
             echo 'The SHA and digest still require review and explicit pins in the trusted PR workflow.'
           } >>"$GITHUB_STEP_SUMMARY"
 
+      - name: Stage release evidence after runtime canary
+        if: always()
+        run: |
+          set -euo pipefail
+          release_evidence="$RUNNER_TEMP/streamlens-java-v6-release-evidence-$GITHUB_RUN_ID"
+          staged_evidence="$GITHUB_WORKSPACE/release-evidence"
+          [[ ! -e "$staged_evidence" && ! -L "$staged_evidence" ]] || {
+            echo 'release evidence staging path already exists in the source checkout' >&2
+            exit 2
+          }
+          umask 077
+          mkdir -m 0700 "$staged_evidence"
+          if [[ -d "$release_evidence" && ! -L "$release_evidence" ]]; then
+            cp -a --no-preserve=ownership "$release_evidence/." "$staged_evidence/"
+          else
+            printf 'release evidence directory was not created\n' >"$staged_evidence/evidence-missing.txt"
+          fi
+
       - name: Retain release canary evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: java-v5-image-canary-${{ github.run_id }}
-          path: ${{ env.RELEASE_EVIDENCE }}/
+          name: java-v6-image-canary-${{ github.run_id }}
+          path: release-evidence/
           if-no-files-found: error
           retention-days: 90

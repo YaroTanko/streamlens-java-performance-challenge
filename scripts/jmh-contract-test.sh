@@ -34,7 +34,7 @@ key=abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
 record=$(java -Xms1g -Xmx1g -XX:+UseG1GC -XX:ActiveProcessorCount=1 \
   -cp "$jar" com.streamlens.assessment.BenchmarkVerifier \
   oracle --seed "$seed" --auth-key "$key")
-[[ $record =~ ^streamlens-java-oracle-v5:${seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] || {
+[[ $record =~ ^streamlens-java-oracle-v6:${seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] || {
   echo 'jmh-contract-test: oracle record is malformed' >&2
   exit 1
 }

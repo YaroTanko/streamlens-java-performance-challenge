@@ -349,7 +349,7 @@ public final class BenchmarkCompare {
                 throw new IllegalArgumentException("authoritative fixture seed must be 256-bit lowercase hex");
             }
             String digest = "[0-9a-f]{64}";
-            if (!expected.matches("streamlens-java-oracle-v5:" + seed + ':'
+            if (!expected.matches("streamlens-java-oracle-v6:" + seed + ':'
                     + digest + ':' + digest + ':' + digest + ':' + digest)) {
                 throw new IllegalArgumentException("malformed authenticated fixture record");
             }

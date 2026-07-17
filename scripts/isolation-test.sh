@@ -118,7 +118,7 @@ expected_cid=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 fake_fixture_seed=1111111111111111111111111111111111111111111111111111111111111111
 fake_fixture_key=2222222222222222222222222222222222222222222222222222222222222222
 fake_fixture_digest=3333333333333333333333333333333333333333333333333333333333333333
-fake_fixture_expected="streamlens-java-oracle-v5:$fake_fixture_seed:$fake_fixture_digest:$fake_fixture_digest:$fake_fixture_digest:$fake_fixture_digest"
+fake_fixture_expected="streamlens-java-oracle-v6:$fake_fixture_seed:$fake_fixture_digest:$fake_fixture_digest:$fake_fixture_digest:$fake_fixture_digest"
 
 run_fake() {
   local mode=$1 cleanup=$2 deadline=$3 cap=$4
@@ -259,7 +259,7 @@ oracle_prefix="@@STREAMLENS_JAVA_ORACLE_RESULT $runtime_oracle_token "
 [[ $(grep -Fc "$oracle_prefix" <<<"$oracle_output" || true) == 1 ]] \
   || fail 'real oracle canary produced no authenticated result'
 runtime_fixture_expected=$(sed -n "s/^$oracle_prefix//p" <<<"$oracle_output")
-[[ $runtime_fixture_expected =~ ^streamlens-java-oracle-v5:${runtime_fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
+[[ $runtime_fixture_expected =~ ^streamlens-java-oracle-v6:${runtime_fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
   || fail 'real oracle canary record was malformed'
 
 benchmark_output=$(ASSESSMENT_FIXTURE_SEED="$runtime_fixture_seed" \

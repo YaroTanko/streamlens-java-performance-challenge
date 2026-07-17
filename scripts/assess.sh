@@ -102,7 +102,7 @@ for revision in "$baseline_commit" "$candidate_base_commit" "$candidate_commit";
   [[ $revision =~ ^[0-9a-f]{40}$ ]] || die 'revisions must be full lowercase 40-character SHAs'
 done
 [[ $candidate_base_commit == "$baseline_commit" ]] \
-  || die 'java-v5 candidate base must equal the immutable assessment baseline'
+  || die 'java-v6 candidate base must equal the immutable assessment baseline'
 
 baseline=$(physical_checkout "$baseline_input" 'baseline checkout')
 candidate=$(physical_checkout "$candidate_input" 'candidate checkout')
@@ -237,7 +237,7 @@ fixture_seed=$(sed -n 's/^fixture[.]seed=//p' "$fixture_file")
 fixture_expected=$(sed -n 's/^fixture[.]expected=//p' "$fixture_file")
 [[ $fixture_seed =~ ^[0-9a-f]{64}$ \
    && $fixture_auth_key =~ ^[0-9a-f]{64}$ \
-   && $fixture_expected =~ ^streamlens-java-oracle-v5:${fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
+   && $fixture_expected =~ ^streamlens-java-oracle-v6:${fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
   || die 'benchmark fixture contract values are invalid'
 
 report="$benchmark_directory/report.md"
@@ -274,7 +274,7 @@ profile_alloc_status=$?
 set -e
 
 {
-  printf 'assessment_version=java-v5\n'
+  printf 'assessment_version=java-v6\n'
   printf 'scope=passed\n'
   printf 'functional=passed\n'
   printf 'comparator_exit=%s\n' "$comparator_status"
@@ -287,7 +287,7 @@ manifest=(
   --revision "assessment_baseline=$baseline_commit"
   --revision "candidate_base=$candidate_base_commit"
   --revision "candidate=$candidate_commit"
-  --parameter assessment.version=java-v5
+  --parameter assessment.version=java-v6
   --parameter "runtime.image=$image"
   --parameter "benchmark.samples=$samples"
   --parameter benchmark.mode=avgt

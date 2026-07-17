@@ -11,7 +11,7 @@ exercise with other hiring evidence.
 - Date/time and time zone:
 - Assessment version:
 - Baseline full SHA:
-- Candidate branch confirmed to descend from `baseline-v5`:
+- Candidate branch confirmed to descend from `baseline-v6`:
 - Candidate recorded SHA:
 - Pinned Java version:
 - Pinned container digest:
@@ -24,7 +24,7 @@ exercise with other hiring evidence.
 
 - [ ] Live status was **Active**, not Pending, on the upstream protected default
   branch at session start (not inferred from the baseline tag or candidate branch).
-- [ ] `baseline-v5` tag, trusted upstream-workflow full SHA pin, and image digest
+- [ ] `baseline-v6` tag, trusted upstream-workflow full SHA pin, and image digest
   agreed.
 - [ ] Exact-image real-runtime canary evidence was available.
 - [ ] Calibration evidence and the required private-evaluator pre-score review
