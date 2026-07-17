@@ -22,6 +22,7 @@ import java.util.Map;
 
 /** Reads, validates, filters, and aggregates StreamLens NDJSON events. */
 public final class Analyzer {
+    // Intentionally unchanged behavior for the A/A calibration control submission.
     private static final BigInteger BILLION = BigInteger.valueOf(1_000_000_000L);
     private static final long YEAR_ONE_EPOCH_SECOND = -62_135_596_800L;
     private static final long MINIMUM_OUTPUT_EPOCH_SECOND = -62_167_219_200L;

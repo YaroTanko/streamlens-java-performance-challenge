@@ -1,15 +1,8 @@
 # Optimization Notes
 
-Replace this template with 5–10 concise bullet lines before opening your pull
-request. Keep the `Profile evidence:` label and name the command or tool plus a
-hotspot you actually observed. JFR, async-profiler, an IDE profiler, or another
-measured profiler is as valid as the provided targets.
-
-- Profile evidence:
-- Bottleneck:
-- Change:
-- CPU effect:
-- Allocation effect:
-- Correctness:
-- Trade-off:
-- Verification:
+- Profile evidence: `make profile-cpu` captured baseline JFR data for the Analyzer parsing and aggregation workload.
+- Approach: retain the immutable baseline implementation as the A/A calibration control.
+- Contract: no parsing, validation, ordering, cancellation, or floating-point behavior changes.
+- Expected effect: no intentional CPU or allocation improvement; measured variance is the calibration signal.
+- Trade-off: this submission is useful only as a release-control reference, not as a candidate optimization.
+- Verification: `make check`, benchmark, CPU JFR, and allocation JFR passed on the baseline.
