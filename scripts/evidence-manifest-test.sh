@@ -31,7 +31,7 @@ run_manifest() {
 run_manifest "$work/one/run" first
 run_manifest "$work/two/run" second
 cmp "$work/one/run/evidence/manifest-core.json" "$work/two/run/evidence/manifest-core.json"
-grep -Fq '"schema": "streamlens-java-evidence-core-v3"' \
+grep -Fq '"schema": "streamlens-java-evidence-core-v4"' \
   "$work/one/run/evidence/manifest-core.json"
 if cmp -s "$work/one/run/evidence/manifest-envelope.json" \
     "$work/two/run/evidence/manifest-envelope.json"; then

@@ -67,7 +67,7 @@ oracle_prefix="@@STREAMLENS_JAVA_ORACLE_RESULT $oracle_token "
    && $(wc -l <"$oracle_capture" | tr -d '[:space:]') == 1 ]] \
   || die 'trusted baseline oracle produced no unique authenticated record'
 fixture_expected=$(sed -n "s/^$oracle_prefix//p" "$oracle_capture")
-[[ $fixture_expected =~ ^streamlens-java-oracle-v3:${fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
+[[ $fixture_expected =~ ^streamlens-java-oracle-v4:${fixture_seed}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}:[0-9a-f]{64}$ ]] \
   || die 'trusted baseline oracle record is malformed or has the wrong seed'
 rm -f -- "$oracle_capture"
 

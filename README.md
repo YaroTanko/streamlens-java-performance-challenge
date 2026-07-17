@@ -8,11 +8,11 @@ compare the result with an immutable baseline.
 
 > **Live release authority:** read activation state and pins only from
 > `RELEASES.md` and the trusted assessment workflow on the upstream protected
-> default branch. The immutable `baseline-v3` tag and every candidate branch are
+> default branch. The immutable `baseline-v4` tag and every candidate branch are
 > snapshots, not live release records: their status prose and intentionally
 > `PENDING` runner values are historical and non-authoritative after activation.
 >
-> Before scoring, verify in that upstream record that the immutable `baseline-v3`
+> Before scoring, verify in that upstream record that the immutable `baseline-v4`
 > and image pins, exact-image Docker canary, calibration, and private-evaluator
 > pre-score gate are complete. `PRD.md` contains the complete gate.
 
@@ -69,9 +69,9 @@ Use any AI assistant and any local profiling/analysis tools. Change exactly:
 Keep all observable behavior unchanged. Replace the note template with 5–10
 truthful bullets, including the measured profiler/tool and observed hotspot. Open
 a pull request containing the commit SHA recorded before the 30-minute timer
-ended. Start from `baseline-v3` and do not merge, rebase, or otherwise update the
+ended. Start from `baseline-v4` and do not merge, rebase, or otherwise update the
 candidate branch from the upstream default branch; that branch later carries
-mutable activation metadata. Scope validation compares `baseline-v3..candidate`
+mutable activation metadata. Scope validation compares `baseline-v4..candidate`
 and permits only these two paths.
 
 CI first checks scope, the safe-JDK source policy, and correctness. It then builds
@@ -90,7 +90,7 @@ not a Java level or hiring outcome.
 
 ## Maintainer activation boundary
 
-The protected upstream default branch becomes an active `java-v3` release only
+The protected upstream default branch becomes an active `java-v4` release only
 after evidence proves the full gate in `PRD.md`, including:
 
 - clean Java 21 build and contract tests;
@@ -107,7 +107,7 @@ Development tests or a mock runner do not justify changing the status banner to
 active. Activation is a release decision over one pinned evidence set. The
 immutable candidate baseline remains unchanged: a later protected activation
 commit records the live status and pins on the default branch rather than editing
-`baseline-v3`.
+`baseline-v4`.
 
 ## Documentation
 

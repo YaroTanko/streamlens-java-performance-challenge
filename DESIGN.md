@@ -7,9 +7,9 @@ small enough to understand during a 30-minute exercise, while the supplied
 implementation leaves multiple realistic Java CPU and allocation trade-offs.
 
 `PRD.md` defines observable behavior; this document explains component boundaries
-and invariants. Live `java-v3` activation status and pins are authoritative only
+and invariants. Live `java-v4` activation status and pins are authoritative only
 in `RELEASES.md` and the trusted assessment workflow on the upstream protected
-default branch. `baseline-v3` is the immutable candidate snapshot (**B**), so its
+default branch. `baseline-v4` is the immutable candidate snapshot (**B**), so its
 pre-activation status prose and intentionally `PENDING` runner values remain
 historical and non-authoritative after a later protected activation commit (**A**).
 Candidates remain on B and never merge, rebase, or update from the default branch;
@@ -158,7 +158,7 @@ and human review required before scoring.
 
 JFR CPU and allocation profiles run separately because recording changes runtime
 conditions. They guide diagnosis and review but never enter scored samples.
-Exact `objects/op` is not a `java-v3` scored metric.
+Exact `objects/op` is not a `java-v4` scored metric.
 
 ## Candidate integrity boundary
 
@@ -172,7 +172,7 @@ The assessor constructs both measured trees from the immutable baseline and
 overlays only the candidate's two committed regular files. All tests, workloads,
 build logic, scripts, and workflows therefore come from the baseline. The
 candidate branch must contain no default-branch activation update: the trusted
-scope audit examines `baseline-v3..candidate` and permits only those two files.
+scope audit examines `baseline-v4..candidate` and permits only those two files.
 
 ## Restricted execution and evidence
 
@@ -194,7 +194,7 @@ parent frames output and writes artifacts. Cleanup accepts only the invocation's
 validated container ID and fails closed.
 
 A real canary against the exact image must demonstrate those runtime properties
-before public `java-v3` activation; mocks are not release evidence. The manifest
+before public `java-v4` activation; mocks are not release evidence. The manifest
 hashes retained artifacts and records exact revisions/parameters. It improves
 traceability without proving candidate authorship or eliminating same-process
 risk.

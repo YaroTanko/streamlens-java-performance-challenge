@@ -169,8 +169,8 @@ public final class EvidenceManifest {
     private static String coreJson(Arguments arguments, List<Artifact> artifacts) {
         StringBuilder output = new StringBuilder();
         output.append("{\n")
-                .append("  \"schema\": \"streamlens-java-evidence-core-v3\",\n")
-                .append("  \"assessment_version\": \"java-v3\",\n")
+                .append("  \"schema\": \"streamlens-java-evidence-core-v4\",\n")
+                .append("  \"assessment_version\": \"java-v4\",\n")
                 .append("  \"revisions\": ");
         appendMap(output, arguments.revisions, "  ");
         output.append(",\n  \"parameters\": ");
@@ -192,8 +192,8 @@ public final class EvidenceManifest {
     private static String envelopeJson(Arguments arguments, String coreHash) {
         StringBuilder output = new StringBuilder();
         output.append("{\n")
-                .append("  \"schema\": \"streamlens-java-evidence-envelope-v3\",\n")
-                .append("  \"assessment_version\": \"java-v3\",\n")
+                .append("  \"schema\": \"streamlens-java-evidence-envelope-v4\",\n")
+                .append("  \"assessment_version\": \"java-v4\",\n")
                 .append("  \"core_sha256\": ").append(quote(coreHash)).append(",\n")
                 .append("  \"generated_at\": ").append(quote(Instant.now().toString())).append(",\n")
                 .append("  \"environment\": ");
