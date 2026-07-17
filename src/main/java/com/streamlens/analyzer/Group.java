@@ -1,9 +1,11 @@
 package com.streamlens.analyzer;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-/** Deterministic aggregate emitted by the analyzer. */
+/** The aggregate for one UTC window, tenant, and event type. */
 public record Group(
         Instant windowStart,
         String tenantId,
@@ -12,8 +14,7 @@ public record Group(
         double sum,
         int uniqueUsers,
         List<TopUser> topUsers) {
-
     public Group {
-        topUsers = List.copyOf(topUsers);
+        topUsers = Collections.unmodifiableList(new ArrayList<>(topUsers));
     }
 }
