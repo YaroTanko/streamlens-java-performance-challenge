@@ -510,10 +510,12 @@ cryptographically establish authorship or benign analyzer behavior.
 
 ## 19. Documentation set
 
-Repository-facing text is English and includes:
+Repository-facing assessment rules are English. CANDIDATE_GUIDE.md is
+intentionally bilingual in English and Ukrainian; the documentation set includes:
 
 - `PRD.md` — product and assessment source of truth;
 - `TASK.md` — candidate rules, workflow, and scoring;
+- `CANDIDATE_GUIDE.md` — candidate-facing bilingual workflow and expected results;
 - `DESIGN.md` — components and behavioral invariants;
 - `PROFILING.md` — profiler workflow and interpretation;
 - `AGENTS.md` — canonical AI-agent constraints;

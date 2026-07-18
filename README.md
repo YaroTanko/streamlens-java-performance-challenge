@@ -113,6 +113,7 @@ commit records the live status and pins on the default branch rather than editin
 
 - `PRD.md` — authoritative product and assessment contract
 - `TASK.md` — candidate scope, workflow, and scoring
+- `CANDIDATE_GUIDE.md` — candidate-facing walkthrough in English and Ukrainian
 - `DESIGN.md` — architecture and invariants
 - `PROFILING.md` — measured profiling workflow
 - `AGENTS.md` — instructions for AI coding agents
