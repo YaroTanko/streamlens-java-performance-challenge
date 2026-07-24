@@ -1,12 +1,12 @@
 package com.streamlens.analyzer;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
@@ -46,8 +46,11 @@ public final class Analyzer {
         checkInterrupted();
 
         NormalizedConfig normalized = normalize(config);
-        Map<String, Aggregate> aggregates = new HashMap<>();
+        Map<WindowKey, Aggregate> aggregates = new HashMap<>();
         LineReader reader = new LineReader(input);
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
         int lineNumber = 0;
 
         while (true) {
@@ -63,7 +66,7 @@ public final class Analyzer {
 
             lineNumber++;
             checkInterrupted();
-            String line = decodeLine(encodedLine, lineNumber);
+            String line = decodeLine(decoder, encodedLine, lineNumber);
             String trimmed = trimContractWhitespace(line);
             if (trimmed.isEmpty()) {
                 continue;
@@ -88,7 +91,7 @@ public final class Analyzer {
         for (Aggregate aggregate : aggregates.values()) {
             checkInterrupted();
             List<TopUser> allUsers = new ArrayList<>(aggregate.users.size());
-            for (UserTotal user : aggregate.users) {
+            for (UserTotal user : aggregate.users.values()) {
                 allUsers.add(new TopUser(user.userId, user.value));
             }
             allUsers.sort((left, right) -> {
@@ -129,17 +132,17 @@ public final class Analyzer {
             throw new AnalysisException("top-k must be positive");
         }
         int topK = config.topK() == 0 ? AnalyzerConfig.DEFAULT_TOP_K : config.topK();
+        BigInteger windowNanos = BigInteger.valueOf(window.getSeconds())
+                .multiply(BILLION)
+                .add(BigInteger.valueOf(window.getNano()));
         return new NormalizedConfig(
-                config.from(), config.to(), config.types(), window, topK);
+                config.from(), config.to(), config.types(), window, topK, windowNanos);
     }
 
-    private static String decodeLine(byte[] encoded, int lineNumber) throws AnalysisException {
+    private static String decodeLine(CharsetDecoder decoder, byte[] encoded, int lineNumber)
+            throws AnalysisException {
         try {
-            return StandardCharsets.UTF_8.newDecoder()
-                    .onMalformedInput(CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(CodingErrorAction.REPORT)
-                    .decode(ByteBuffer.wrap(encoded))
-                    .toString();
+            return decoder.decode(ByteBuffer.wrap(encoded)).toString();
         } catch (CharacterCodingException failure) {
             throw new AnalysisException(
                     "line " + lineNumber + ": input is not valid UTF-8", failure);
@@ -147,9 +150,9 @@ public final class Analyzer {
     }
 
     private static Event parseEvent(String line, int lineNumber) throws AnalysisException {
-        Map<String, String> fields = new JsonParser(line).parseEventObject();
+        EventFields fields = new JsonParser(line).parseEventObject();
 
-        String timestampText = requiredString(fields, "timestamp");
+        String timestampText = requiredString(fields.timestamp(), "timestamp");
         Instant timestamp;
         try {
             timestamp = Rfc3339.parse(timestampText);
@@ -158,11 +161,11 @@ public final class Analyzer {
                     "timestamp must be RFC3339 with an explicit offset", failure);
         }
 
-        String tenantId = requiredString(fields, "tenant_id");
-        String userId = requiredString(fields, "user_id");
-        String type = requiredString(fields, "type");
+        String tenantId = requiredString(fields.tenantId(), "tenant_id");
+        String userId = requiredString(fields.userId(), "user_id");
+        String type = requiredString(fields.type(), "type");
 
-        String rawValue = fields.get("value");
+        String rawValue = fields.value();
         if (rawValue == null) {
             throw new AnalysisException("value is required");
         }
@@ -184,9 +187,8 @@ public final class Analyzer {
         return new Event(lineNumber, timestamp, tenantId, userId, type, value);
     }
 
-    private static String requiredString(Map<String, String> fields, String name)
+    private static String requiredString(String raw, String name)
             throws AnalysisException {
-        String raw = fields.get(name);
         if (raw == null) {
             throw new AnalysisException(name + " is required");
         }
@@ -219,12 +221,12 @@ public final class Analyzer {
     }
 
     private static void addEvent(
-            Map<String, Aggregate> aggregates,
+            Map<WindowKey, Aggregate> aggregates,
             NormalizedConfig config,
             Event event) throws AnalysisException {
         Instant windowStart;
         try {
-            windowStart = alignWindow(event.timestamp, config.window);
+            windowStart = alignWindow(event.timestamp, config.windowNanos);
             if (windowStart.getEpochSecond() < MINIMUM_OUTPUT_EPOCH_SECOND
                     || windowStart.getEpochSecond() >= MAXIMUM_OUTPUT_EPOCH_SECOND_EXCLUSIVE) {
                 throw new DateTimeException("window start is outside the output range");
@@ -233,27 +235,19 @@ public final class Analyzer {
             throw new AnalysisException(
                     "line " + event.lineNumber + ": window alignment overflow", failure);
         }
-        String key = windowStart.getEpochSecond()
-                + ":" + windowStart.getNano()
-                + ":" + event.tenantId.length() + ":" + event.tenantId
-                + ":" + event.type.length() + ":" + event.type;
+        WindowKey key = new WindowKey(
+                windowStart.getEpochSecond(), windowStart.getNano(), event.tenantId, event.type);
         Aggregate aggregate = aggregates.get(key);
         if (aggregate == null) {
             aggregate = new Aggregate(windowStart, event.tenantId, event.type);
             aggregates.put(key, aggregate);
         }
 
-        int userIndex = -1;
-        for (int index = 0; index < aggregate.users.size(); index++) {
-            if (aggregate.users.get(index).userId.equals(event.userId)) {
-                userIndex = index;
-                break;
-            }
-        }
+        UserTotal user = aggregate.users.get(event.userId);
 
         double nextUserSum = event.value;
-        if (userIndex >= 0) {
-            nextUserSum = aggregate.users.get(userIndex).value + event.value;
+        if (user != null) {
+            nextUserSum = user.value + event.value;
             if (Double.isInfinite(nextUserSum)) {
                 throw new AnalysisException(
                         "line " + event.lineNumber
@@ -271,17 +265,14 @@ public final class Analyzer {
 
         aggregate.count++;
         aggregate.sum = nextGroupSum;
-        if (userIndex < 0) {
-            aggregate.users.add(new UserTotal(event.userId, event.value));
+        if (user == null) {
+            aggregate.users.put(event.userId, new UserTotal(event.userId, event.value));
         } else {
-            aggregate.users.get(userIndex).value = nextUserSum;
+            user.value = nextUserSum;
         }
     }
 
-    private static Instant alignWindow(Instant timestamp, Duration window) {
-        BigInteger windowNanos = BigInteger.valueOf(window.getSeconds())
-                .multiply(BILLION)
-                .add(BigInteger.valueOf(window.getNano()));
+    private static Instant alignWindow(Instant timestamp, BigInteger windowNanos) {
         BigInteger deltaNanos = BigInteger.valueOf(timestamp.getEpochSecond())
                 .subtract(BigInteger.valueOf(YEAR_ONE_EPOCH_SECOND))
                 .multiply(BILLION)
@@ -345,7 +336,8 @@ public final class Analyzer {
             Instant to,
             List<String> types,
             Duration window,
-            int topK) {}
+            int topK,
+            BigInteger windowNanos) {}
 
     private record Event(
             int lineNumber,
@@ -354,6 +346,15 @@ public final class Analyzer {
             String userId,
             String type,
             double value) {}
+
+    private record EventFields(
+            String timestamp,
+            String tenantId,
+            String userId,
+            String type,
+            String value) {}
+
+    private record WindowKey(long epochSecond, int nano, String tenantId, String type) {}
 
     private static final class UserTotal {
         private final String userId;
@@ -369,7 +370,7 @@ public final class Analyzer {
         private final Instant windowStart;
         private final String tenantId;
         private final String type;
-        private final List<UserTotal> users = new ArrayList<>();
+        private final Map<String, UserTotal> users = new HashMap<>();
         private long count;
         private double sum;
 
@@ -381,25 +382,47 @@ public final class Analyzer {
     }
 
     private static final class LineReader {
-        private final BufferedInputStream input;
+        private final InputStream input;
+        private final byte[] buffer = new byte[8192];
+        private int bufferPos;
+        private int bufferLimit;
 
         private LineReader(InputStream input) {
-            this.input = input instanceof BufferedInputStream buffered
-                    ? buffered
-                    : new BufferedInputStream(input);
+            this.input = input;
         }
 
         private byte[] readLine() throws IOException {
-            ByteArrayOutputStream line = new ByteArrayOutputStream(256);
+            ByteArrayOutputStream pending = null;
             while (true) {
-                int next = input.read();
-                if (next < 0) {
-                    return line.size() == 0 ? null : line.toByteArray();
+                if (bufferPos >= bufferLimit) {
+                    bufferLimit = input.read(buffer);
+                    bufferPos = 0;
+                    if (bufferLimit < 0) {
+                        return pending == null ? null : pending.toByteArray();
+                    }
                 }
-                if (next == '\n') {
-                    return line.toByteArray();
+
+                int start = bufferPos;
+                while (bufferPos < bufferLimit && buffer[bufferPos] != '\n') {
+                    bufferPos++;
                 }
-                line.write(next);
+
+                if (bufferPos < bufferLimit) {
+                    int end = bufferPos;
+                    bufferPos++;
+                    if (pending == null) {
+                        byte[] result = new byte[end - start];
+                        System.arraycopy(buffer, start, result, 0, result.length);
+                        return result;
+                    }
+                    pending.write(buffer, start, end - start);
+                    return pending.toByteArray();
+                }
+
+                if (pending == null) {
+                    pending = new ByteArrayOutputStream(256);
+                }
+                pending.write(buffer, start, bufferPos - start);
             }
         }
     }
@@ -421,17 +444,22 @@ public final class Analyzer {
             this.source = source;
         }
 
-        private Map<String, String> parseEventObject() throws AnalysisException {
+        private EventFields parseEventObject() throws AnalysisException {
             skipWhitespace();
             if (!consume('{')) {
                 throw invalid("event must be a JSON object");
             }
 
-            Map<String, String> fields = new HashMap<>();
+            String timestampRaw = null;
+            String tenantIdRaw = null;
+            String userIdRaw = null;
+            String typeRaw = null;
+            String valueRaw = null;
+
             skipWhitespace();
             if (consume('}')) {
                 requireEnd();
-                return fields;
+                return new EventFields(null, null, null, null, null);
             }
 
             while (true) {
@@ -446,13 +474,34 @@ public final class Analyzer {
                 }
                 skipWhitespace();
                 int valueStart = index;
-                skipValue();
-                fields.put(name, source.substring(valueStart, index));
+                switch (name) {
+                    case "timestamp" -> {
+                        skipValue();
+                        timestampRaw = source.substring(valueStart, index);
+                    }
+                    case "tenant_id" -> {
+                        skipValue();
+                        tenantIdRaw = source.substring(valueStart, index);
+                    }
+                    case "user_id" -> {
+                        skipValue();
+                        userIdRaw = source.substring(valueStart, index);
+                    }
+                    case "type" -> {
+                        skipValue();
+                        typeRaw = source.substring(valueStart, index);
+                    }
+                    case "value" -> {
+                        skipValue();
+                        valueRaw = source.substring(valueStart, index);
+                    }
+                    default -> skipValue();
+                }
 
                 skipWhitespace();
                 if (consume('}')) {
                     requireEnd();
-                    return fields;
+                    return new EventFields(timestampRaw, tenantIdRaw, userIdRaw, typeRaw, valueRaw);
                 }
                 if (!consume(',')) {
                     throw invalid("expected ',' or '}' after object field value");
